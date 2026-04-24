@@ -17,6 +17,16 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown(
+    """
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Strava Dashboard">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/747/747376.png">
+    """,
+    unsafe_allow_html=True,
+)
+
 try:
     settings = get_settings()
 except Exception:
