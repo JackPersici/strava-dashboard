@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-import math
+from typing import Iterable
 
 import pandas as pd
 import plotly.express as px
@@ -33,84 +33,355 @@ from app.storage import load_activities, save_activities
 from app.strava_api import StravaClient
 
 
+# ============================================================
+# PAGE CONFIG
+# ============================================================
+
 st.set_page_config(
     page_title="Strava Dashboard",
     page_icon="🚴",
     layout="wide",
 )
 
+
+# ============================================================
+# THEME / STYLE
+# ============================================================
+
+SPORT_COLORS = {
+    "Ciclismo": "#ff7a1a",
+    "VirtualRide": "#3b82f6",
+    "Corsa": "#ff4d4f",
+    "TrailRun": "#a855f7",
+    "Escursionismo": "#4ade80",
+    "Camminata": "#22c55e",
+    "GravelRide": "#8b5cf6",
+    "Sci alpino": "#60a5fa",
+    "Sci alpinismo": "#38bdf8",
+    "Nuoto": "#fbbf24",
+    "SUP": "#14b8a6",
+    "Surf": "#f59e0b",
+    "Workout": "#10b981",
+    "Other": "#94a3b8",
+}
+
+BG = "#07111f"
+PANEL = "#0b1830"
+PANEL_2 = "#0f1d38"
+BORDER = "rgba(148, 163, 184, 0.18)"
+TEXT = "#f8fafc"
+MUTED = "#94a3b8"
+ACCENT = "#ff7a1a"
+GREEN = "#22c55e"
+RED = "#ef4444"
+
 st.markdown(
-    """
+    f"""
     <style>
-    .block-container {
-        padding-top: 1.5rem;
+    .stApp {{
+        background:
+            radial-gradient(circle at top right, rgba(25, 55, 95, 0.45), transparent 28%),
+            linear-gradient(180deg, #07111f 0%, #09162a 100%);
+        color: {TEXT};
+    }}
+
+    .block-container {{
+        max-width: 1450px;
+        padding-top: 1.2rem;
         padding-bottom: 2rem;
-    }
-    .kpi-card {
-        background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
-        border: 1px solid rgba(148, 163, 184, 0.15);
+    }}
+
+    h1, h2, h3, h4, h5, h6, p, div, span, label {{
+        color: {TEXT};
+    }}
+
+    [data-testid="stHeader"] {{
+        background: transparent;
+    }}
+
+    [data-testid="stToolbar"] {{
+        right: 0.5rem;
+    }}
+
+    .app-title {{
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.4rem;
+        letter-spacing: -0.03em;
+    }}
+
+    .app-subtitle {{
+        color: {MUTED};
+        font-size: 1rem;
+        margin-bottom: 1.25rem;
+    }}
+
+    .hero-wrap {{
+        background: linear-gradient(180deg, rgba(11,24,48,0.88) 0%, rgba(8,18,35,0.88) 100%);
+        border: 1px solid {BORDER};
+        border-radius: 22px;
+        padding: 20px 20px 16px 20px;
+        margin-bottom: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+    }}
+
+    .filter-wrap {{
+        background: linear-gradient(180deg, rgba(11,24,48,0.85) 0%, rgba(8,18,35,0.85) 100%);
+        border: 1px solid {BORDER};
         border-radius: 18px;
-        padding: 18px 18px 14px 18px;
-        color: white;
-        min-height: 132px;
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18);
-    }
-    .kpi-label {
-        font-size: 0.9rem;
+        padding: 14px 14px 4px 14px;
+        margin-bottom: 18px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    }}
+
+    .kpi-card {{
+        background: linear-gradient(180deg, rgba(13,27,52,1) 0%, rgba(9,22,42,1) 100%);
+        border: 1px solid {BORDER};
+        border-radius: 18px;
+        padding: 16px 18px 14px 18px;
+        min-height: 125px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.16);
+    }}
+
+    .kpi-label {{
+        font-size: 0.88rem;
         color: #cbd5e1;
-        margin-bottom: 6px;
-    }
-    .kpi-value {
+        margin-bottom: 10px;
+    }}
+
+    .kpi-value {{
         font-size: 2rem;
-        font-weight: 700;
-        line-height: 1.1;
+        font-weight: 800;
+        line-height: 1.05;
         margin-bottom: 8px;
-    }
-    .kpi-delta {
-        font-size: 0.92rem;
-        color: #86efac;
-    }
-    .panel {
-        background: #0f172a;
-        border: 1px solid rgba(148, 163, 184, 0.15);
-        border-radius: 18px;
-        padding: 16px 16px 8px 16px;
         color: white;
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+    }}
+
+    .kpi-delta {{
+        font-size: 0.9rem;
+        color: {GREEN};
+        font-weight: 600;
+    }}
+
+    .panel {{
+        background: linear-gradient(180deg, rgba(11,24,48,0.98) 0%, rgba(8,18,35,0.98) 100%);
+        border: 1px solid {BORDER};
+        border-radius: 18px;
+        padding: 14px 14px 10px 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.16);
         margin-bottom: 14px;
-    }
-    .panel h4 {
-        margin-top: 0;
+    }}
+
+    .panel-title {{
+        font-size: 1.15rem;
+        font-weight: 800;
         margin-bottom: 10px;
         color: white;
-    }
-    .tiny {
-        color: #94a3b8;
-        font-size: 0.88rem;
-    }
-    .pill {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        background: rgba(249, 115, 22, 0.12);
-        color: #fb923c;
-        border: 1px solid rgba(249, 115, 22, 0.25);
-    }
-    .hint {
-        color: #94a3b8;
+    }}
+
+    .panel-note {{
+        color: {MUTED};
         font-size: 0.9rem;
-        margin-top: -4px;
-        margin-bottom: 6px;
-    }
+        margin-top: -2px;
+        margin-bottom: 8px;
+    }}
+
+    .mini-stat {{
+        background: rgba(255,255,255,0.02);
+        border: 1px solid {BORDER};
+        border-radius: 16px;
+        padding: 14px 14px 10px 14px;
+        margin-bottom: 10px;
+    }}
+
+    .mini-label {{
+        color: {MUTED};
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+    }}
+
+    .mini-value {{
+        color: white;
+        font-size: 1.55rem;
+        font-weight: 800;
+        line-height: 1.1;
+    }}
+
+    .mini-sub {{
+        color: #cbd5e1;
+        font-size: 0.9rem;
+        margin-top: 4px;
+    }}
+
+    .pill {{
+        display: inline-block;
+        background: rgba(255,122,26,0.10);
+        color: #ffb37b;
+        border: 1px solid rgba(255,122,26,0.22);
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }}
+
+    .insight-row {{
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(148,163,184,0.12);
+    }}
+
+    .insight-row:last-child {{
+        border-bottom: none;
+    }}
+
+    .insight-main {{
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: white;
+    }}
+
+    .insight-sub {{
+        color: {MUTED};
+        font-size: 0.88rem;
+        margin-top: 2px;
+    }}
+
+    .table-wrap {{
+        background: transparent;
+        overflow-x: auto;
+    }}
+
+    .data-table {{
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.95rem;
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid {BORDER};
+    }}
+
+    .data-table th {{
+        background: rgba(255,255,255,0.04);
+        color: #cbd5e1;
+        text-align: left;
+        padding: 12px 14px;
+        font-weight: 700;
+        border-bottom: 1px solid rgba(148,163,184,0.12);
+    }}
+
+    .data-table td {{
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(148,163,184,0.08);
+        color: white;
+    }}
+
+    .data-table tr:last-child td {{
+        border-bottom: none;
+    }}
+
+    .data-table tr:nth-child(even) td {{
+        background: rgba(255,255,255,0.015);
+    }}
+
+    .tiny {{
+        color: {MUTED};
+        font-size: 0.86rem;
+    }}
+
+    .big-empty {{
+        background: linear-gradient(180deg, rgba(11,24,48,0.9) 0%, rgba(8,18,35,0.9) 100%);
+        border: 1px dashed rgba(148,163,184,0.22);
+        border-radius: 18px;
+        padding: 28px;
+        text-align: center;
+        color: {MUTED};
+    }}
+
+    .stTabs [data-baseweb="tab-list"] {{
+        gap: 10px;
+        margin-bottom: 8px;
+    }}
+
+    .stTabs [data-baseweb="tab"] {{
+        background: transparent;
+        border-radius: 12px 12px 0 0;
+        color: #cbd5e1;
+        padding: 8px 8px;
+        font-weight: 600;
+    }}
+
+    .stTabs [aria-selected="true"] {{
+        color: {ACCENT} !important;
+    }}
+
+    [data-testid="stExpander"] {{
+        background: transparent;
+        border: none !important;
+    }}
+
+    .stMultiSelect div[data-baseweb="select"] > div,
+    .stSelectbox div[data-baseweb="select"] > div,
+    .stDateInput > div > div {{
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(148,163,184,0.16);
+        border-radius: 12px;
+        color: white;
+    }}
+
+    .stButton button {{
+        background: linear-gradient(180deg, #ff7a1a 0%, #f97316 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        padding: 0.5rem 1rem;
+    }}
+
+    .stButton button:hover {{
+        background: linear-gradient(180deg, #ff8b36 0%, #fb7c20 100%);
+        color: white;
+    }}
+
+    div[data-testid="stMetric"] {{
+        background: linear-gradient(180deg, rgba(13,27,52,1) 0%, rgba(9,22,42,1) 100%);
+        border: 1px solid {BORDER};
+        border-radius: 16px;
+        padding: 12px 16px;
+    }}
+
+    div[data-testid="stMetricLabel"] * {{
+        color: #cbd5e1 !important;
+    }}
+
+    div[data-testid="stMetricValue"] * {{
+        color: white !important;
+    }}
+
+    div[data-testid="stMetricDelta"] * {{
+        color: {GREEN} !important;
+    }}
+
+    @media (max-width: 768px) {{
+        .app-title {{
+            font-size: 2.3rem;
+        }}
+        .kpi-value {{
+            font-size: 1.7rem;
+        }}
+        .panel-title {{
+            font-size: 1rem;
+        }}
+    }}
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------
+
+# ============================================================
+# HELPERS
+# ============================================================
 
 def fmt_km(v: float) -> str:
     return f"{v:,.1f} km"
@@ -124,20 +395,82 @@ def fmt_m(v: float) -> str:
     return f"{v:,.0f} m"
 
 
+def fmt_int(v: float) -> str:
+    return f"{int(round(v))}"
+
+
 def fmt_pct(v: float) -> str:
     sign = "+" if v >= 0 else ""
     return f"{sign}{v:.0f}%"
 
 
-def build_kpi_card(label: str, value: str, delta_text: str = "") -> str:
-    delta_html = f"<div class='kpi-delta'>{delta_text}</div>" if delta_text else "<div class='kpi-delta'>&nbsp;</div>"
+def sport_color_map(labels: Iterable[str]) -> dict[str, str]:
+    return {lab: SPORT_COLORS.get(lab, SPORT_COLORS["Other"]) for lab in labels}
+
+
+def card_html(label: str, value: str, delta: str = "") -> str:
     return f"""
     <div class="kpi-card">
         <div class="kpi-label">{label}</div>
         <div class="kpi-value">{value}</div>
-        {delta_html}
+        <div class="kpi-delta">{delta if delta else "&nbsp;"}</div>
     </div>
     """
+
+
+def mini_stat_html(label: str, value: str, sub: str = "") -> str:
+    return f"""
+    <div class="mini-stat">
+        <div class="mini-label">{label}</div>
+        <div class="mini-value">{value}</div>
+        <div class="mini-sub">{sub}</div>
+    </div>
+    """
+
+
+def section_open(title: str, note: str | None = None) -> None:
+    st.markdown(
+        f"""
+        <div class="panel">
+            <div class="panel-title">{title}</div>
+            {f'<div class="panel-note">{note}</div>' if note else ''}
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def section_close() -> None:
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def render_html_table(df: pd.DataFrame) -> None:
+    if df.empty:
+        st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        return
+    html = df.to_html(index=False, classes="data-table", border=0, escape=False)
+    st.markdown(f"<div class='table-wrap'>{html}</div>", unsafe_allow_html=True)
+
+
+def plot_style(fig: go.Figure, height: int = 320, show_legend: bool = True) -> go.Figure:
+    fig.update_layout(
+        height=height,
+        margin=dict(l=10, r=10, t=12, b=10),
+        paper_bgcolor=PANEL,
+        plot_bgcolor=PANEL,
+        font=dict(color=TEXT),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            x=0,
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(color=TEXT),
+        ),
+        showlegend=show_legend,
+    )
+    fig.update_xaxes(showgrid=False, color="#cbd5e1")
+    fig.update_yaxes(gridcolor="rgba(148,163,184,0.15)", color="#cbd5e1")
+    return fig
 
 
 def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
@@ -171,7 +504,7 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
     proj["proj_elevation_m"] = proj["ytd_elevation_m"] / elapsed_days * total_days
     proj["proj_activities"] = proj["ytd_activities"] / elapsed_days * total_days
 
-    previous = (
+    prev = (
         df[df["year"] == current_year - 1]
         .groupby("sport_label", dropna=False)
         .agg(
@@ -183,7 +516,7 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
 
-    proj = proj.merge(previous, on="sport_label", how="left").fillna(0)
+    proj = proj.merge(prev, on="sport_label", how="left").fillna(0)
 
     def pct(a: pd.Series, b: pd.Series) -> pd.Series:
         return ((a - b) / b.replace(0, pd.NA) * 100).fillna(0)
@@ -193,74 +526,61 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
     proj["delta_elevation_pct"] = pct(proj["proj_elevation_m"], proj["prev_elevation_m"])
     proj["delta_activities_pct"] = pct(proj["proj_activities"], proj["prev_activities"])
 
-    proj = proj.sort_values("proj_distance_km", ascending=False).reset_index(drop=True)
-    return proj
+    return proj.sort_values("proj_distance_km", ascending=False).reset_index(drop=True)
 
 
 def top_sports_panels(sport_df: pd.DataFrame) -> dict:
     if sport_df.empty:
         return {"distance": [], "time": [], "elevation": []}
 
-    by_distance = sport_df.sort_values("distance_km", ascending=False).head(3)
-    by_time = sport_df.sort_values("moving_time_h", ascending=False).head(3)
-    by_elev = sport_df.sort_values("elevation_m", ascending=False).head(3)
-
     return {
-        "distance": by_distance[["sport_label", "distance_km"]].to_dict("records"),
-        "time": by_time[["sport_label", "moving_time_h"]].to_dict("records"),
-        "elevation": by_elev[["sport_label", "elevation_m"]].to_dict("records"),
+        "distance": sport_df.sort_values("distance_km", ascending=False)[["sport_label", "distance_km"]].head(3).to_dict("records"),
+        "time": sport_df.sort_values("moving_time_h", ascending=False)[["sport_label", "moving_time_h"]].head(3).to_dict("records"),
+        "elevation": sport_df.sort_values("elevation_m", ascending=False)[["sport_label", "elevation_m"]].head(3).to_dict("records"),
     }
 
 
-def best_worst_month_cards(df: pd.DataFrame, metric_col: str) -> dict:
-    res = monthly_best_worst(df, metric=metric_col)
-    return res
+def metric_col_name(metric_key: str) -> str:
+    return {
+        "distance_km": "Distanza",
+        "moving_time_h": "Tempo",
+        "elevation_m": "Dislivello",
+    }[metric_key]
 
 
-def make_plot_layout(fig: go.Figure, title: str | None = None, height: int = 320) -> go.Figure:
-    fig.update_layout(
-        title=title,
-        height=height,
-        margin=dict(l=10, r=10, t=40 if title else 10, b=10),
-        paper_bgcolor="#0f172a",
-        plot_bgcolor="#0f172a",
-        font=dict(color="white"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-    )
-    fig.update_xaxes(showgrid=False, color="#cbd5e1")
-    fig.update_yaxes(gridcolor="rgba(148,163,184,0.15)", color="#cbd5e1")
-    return fig
-
-
-# ------------------------------------------------------------
-# Load settings / client
-# ------------------------------------------------------------
+# ============================================================
+# SETTINGS / CLIENT
+# ============================================================
 
 try:
     settings = get_settings()
 except Exception:
-    st.title("Strava Dashboard")
     st.error("Secrets mancanti o non validi.")
-    st.info("Su Streamlit Cloud inserisci i secrets da: Manage app -> Settings -> Secrets.")
-    st.code(
-        '''STRAVA_CLIENT_ID = "114269"
-STRAVA_CLIENT_SECRET = "IL_TUO_CLIENT_SECRET"
-STRAVA_REFRESH_TOKEN = "IL_TUO_REFRESH_TOKEN"
-STRAVA_SCOPE = "read,activity:read_all"''',
-        language="toml",
-    )
     st.stop()
 
 client = StravaClient(settings)
 
-# ------------------------------------------------------------
-# Header + Sync
-# ------------------------------------------------------------
 
-st.title("Strava Dashboard")
-st.caption("Overview, Trend, Performance, Proiezioni e Zone — responsive per iPhone e PC")
+# ============================================================
+# HEADER
+# ============================================================
 
-with st.expander("Sincronizzazione dati", expanded=True):
+st.markdown(
+    """
+    <div class="hero-wrap">
+        <div class="app-title">Strava Dashboard</div>
+        <div class="app-subtitle">Overview completa, analisi avanzate e design mobile-first</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# ============================================================
+# SYNC
+# ============================================================
+
+with st.expander("Sincronizzazione dati", expanded=False):
     start_date = st.date_input("Importa attività da", value=date.fromisoformat(settings.default_start_date))
     sync_now = st.button("Sincronizza da Strava", type="primary")
 
@@ -269,42 +589,49 @@ with st.expander("Sincronizzazione dati", expanded=True):
             with st.spinner("Scarico le attività da Strava..."):
                 after_ts = iso_to_unix(start_date.isoformat())
                 raw = client.list_activities(after_ts=after_ts)
-                df_sync = normalize_activities(raw)
-                save_activities(df_sync, settings.cache_file)
-                st.success(f"Sincronizzazione completata: {len(df_sync)} attività.")
+                sync_df = normalize_activities(raw)
+                save_activities(sync_df, settings.cache_file)
+                st.success(f"Sincronizzazione completata: {len(sync_df)} attività.")
         except Exception as e:
             st.error(f"Errore durante la sincronizzazione: {e}")
 
 base_df = load_activities(settings.cache_file)
 
 if base_df.empty:
-    st.info("Nessun dato disponibile per ora. Premi 'Sincronizza da Strava'.")
+    st.markdown(
+        "<div class='big-empty'>Nessun dato disponibile. Premi <b>Sincronizza da Strava</b>.</div>",
+        unsafe_allow_html=True,
+    )
     st.stop()
 
-# ------------------------------------------------------------
-# Filters
-# ------------------------------------------------------------
+
+# ============================================================
+# FILTERS
+# ============================================================
 
 sports = available_sports(base_df)
-all_years = sorted([int(y) for y in base_df["year"].dropna().unique().tolist()], reverse=True)
+years = sorted([int(y) for y in base_df["year"].dropna().unique().tolist()], reverse=True)
 
-c1, c2, c3 = st.columns([2.4, 1.3, 1.0])
+st.markdown("<div class='filter-wrap'>", unsafe_allow_html=True)
+f1, f2, f3 = st.columns([2.2, 1.2, 1.0])
 
-with c1:
+with f1:
     selected_sports = st.multiselect(
         "Filtro sport",
         options=sports,
         default=[],
         placeholder="Vuoto = tutti gli sport",
-        help="Se non selezioni nulla, la dashboard mostra tutti gli sport.",
+        help="Lascia vuoto per visualizzare il totale di tutti gli sport.",
     )
 
-with c2:
-    year_options = ["Tutti gli anni"] + [str(y) for y in all_years]
+with f2:
+    year_options = ["Tutti gli anni"] + [str(y) for y in years]
     selected_year = st.selectbox("Periodo", options=year_options, index=0)
 
-with c3:
+with f3:
     metric_label = st.selectbox("Metrica trend", ["Distanza", "Tempo", "Dislivello"], index=0)
+
+st.markdown("</div>", unsafe_allow_html=True)
 
 selected_years = None if selected_year == "Tutti gli anni" else [int(selected_year)]
 selected_metric = {
@@ -320,12 +647,16 @@ filtered_df = filter_activities(
 )
 
 if filtered_df.empty:
-    st.warning("Nessun dato disponibile con i filtri correnti.")
+    st.markdown(
+        "<div class='big-empty'>Nessun dato disponibile con i filtri correnti.</div>",
+        unsafe_allow_html=True,
+    )
     st.stop()
 
-# ------------------------------------------------------------
-# Precompute
-# ------------------------------------------------------------
+
+# ============================================================
+# PRE-COMPUTE
+# ============================================================
 
 kpis = kpi_summary(filtered_df)
 distance_compare = compare_vs_previous_year(filtered_df, metric="distance_km")
@@ -336,6 +667,7 @@ sport_summary_df = summary_by_sport(filtered_df)
 monthly_sport_df = monthly_by_sport(filtered_df)
 cumulative_metric_df = cumulative_by_year(filtered_df, metric=selected_metric)
 trend_metric_df = trend_monthly(filtered_df, metric=selected_metric)
+
 bp = best_performances(filtered_df)
 fav_day = favorite_weekday(filtered_df)
 active_week = most_active_week(filtered_df)
@@ -346,346 +678,376 @@ zones = zone_proxy(filtered_df)
 consistency = consistency_score(filtered_df)
 proj = current_year_projection(filtered_df)
 top_sports = top_sports_panels(sport_summary_df)
-bw_distance = best_worst_month_cards(filtered_df, "distance_km")
+month_best_worst = monthly_best_worst(filtered_df, metric="distance_km")
 
-# ------------------------------------------------------------
-# Tabs
-# ------------------------------------------------------------
+
+# ============================================================
+# TABS
+# ============================================================
 
 overview_tab, per_sport_tab, trend_tab, performance_tab, projections_tab, zone_tab = st.tabs(
     ["Overview", "Per sport", "Trend", "Performance", "Proiezioni", "Zone"]
 )
 
-# ------------------------------------------------------------
-# Overview
-# ------------------------------------------------------------
+
+# ============================================================
+# OVERVIEW
+# ============================================================
 
 with overview_tab:
-    k1, k2, k3, k4 = st.columns(4)
-    with k1:
-        st.markdown(
-            build_kpi_card("Attività", f"{kpis['activities']}", fmt_pct(distance_compare["delta_pct"]) + " vs anno scorso"),
-            unsafe_allow_html=True,
-        )
-    with k2:
-        st.markdown(
-            build_kpi_card("Distanza", fmt_km(kpis["distance_km"]), fmt_pct(distance_compare["delta_pct"]) + " vs anno scorso"),
-            unsafe_allow_html=True,
-        )
-    with k3:
-        st.markdown(
-            build_kpi_card("Tempo", fmt_h(kpis["moving_time_h"]), fmt_pct(time_compare["delta_pct"]) + " vs anno scorso"),
-            unsafe_allow_html=True,
-        )
-    with k4:
-        st.markdown(
-            build_kpi_card("Dislivello", fmt_m(kpis["elevation_m"]), fmt_pct(elev_compare["delta_pct"]) + " vs anno scorso"),
-            unsafe_allow_html=True,
-        )
-
-    c1, c2, c3 = st.columns([1.9, 1.2, 1.0])
-
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("<div class='panel'><h4>Andamento mensile</h4></div>", unsafe_allow_html=True)
+        st.markdown(card_html("Attività", fmt_int(kpis["activities"]), f"{fmt_pct(distance_compare['delta_pct'])} vs anno scorso"), unsafe_allow_html=True)
+    with c2:
+        st.markdown(card_html("Distanza", fmt_km(kpis["distance_km"]), f"{fmt_pct(distance_compare['delta_pct'])} vs anno scorso"), unsafe_allow_html=True)
+    with c3:
+        st.markdown(card_html("Tempo", fmt_h(kpis["moving_time_h"]), f"{fmt_pct(time_compare['delta_pct'])} vs anno scorso"), unsafe_allow_html=True)
+    with c4:
+        st.markdown(card_html("Dislivello", fmt_m(kpis["elevation_m"]), f"{fmt_pct(elev_compare['delta_pct'])} vs anno scorso"), unsafe_allow_html=True)
+
+    a, b, c = st.columns([1.9, 1.15, 0.95])
+
+    with a:
+        section_open("Andamento mensile", f"{metric_col_name('distance_km')} aggregata per mese e sport")
         if not monthly_sport_df.empty:
+            color_map = sport_color_map(monthly_sport_df["sport_label"].dropna().unique())
             fig = px.bar(
                 monthly_sport_df,
                 x="month",
                 y="distance_km",
                 color="sport_label",
                 barmode="stack",
+                color_discrete_map=color_map,
             )
-            fig = make_plot_layout(fig, height=340)
+            fig = plot_style(fig, height=355)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-    with c2:
-        st.markdown("<div class='panel'><h4>Distribuzione distanza per sport</h4></div>", unsafe_allow_html=True)
+    with b:
+        section_open("Distribuzione distanza per sport")
         if not sport_summary_df.empty:
+            color_map = sport_color_map(sport_summary_df["sport_label"].dropna().unique())
             fig = px.pie(
                 sport_summary_df,
                 names="sport_label",
                 values="distance_km",
-                hole=0.55,
+                hole=0.62,
+                color="sport_label",
+                color_discrete_map=color_map,
             )
-            fig = make_plot_layout(fig, height=340)
+            fig = plot_style(fig, height=355)
+            fig.update_traces(textinfo="percent")
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-    with c3:
-        st.markdown("<div class='panel'><h4>I tuoi numeri chiave</h4></div>", unsafe_allow_html=True)
-        st.markdown(f"**{kpis['activities']}** attività")
-        st.markdown(f"**{fmt_km(kpis['avg_distance_km'])}** media distanza per attività")
-        st.markdown(f"**{fmt_h(kpis['avg_time_h'])}** media tempo per attività")
-        st.markdown(f"**{fmt_m(kpis['avg_elevation_m'])}** media dislivello per attività")
-        st.markdown(f"**{consistency:.0f}/100** indice di costanza")
+    with c:
+        section_open("I tuoi numeri chiave")
+        st.markdown(mini_stat_html("Attività", fmt_int(kpis["activities"]), "totale periodo selezionato"), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Media distanza", fmt_km(kpis["avg_distance_km"]), "per attività"), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Media tempo", fmt_h(kpis["avg_time_h"]), "per attività"), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Media dislivello", fmt_m(kpis["avg_elevation_m"]), "per attività"), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Indice di costanza", f"{consistency:.0f}/100", "presenza settimanale"), unsafe_allow_html=True)
+        section_close()
 
-    c4, c5, c6 = st.columns([1.4, 1.0, 1.0])
+    d, e, f = st.columns([1.4, 1.05, 1.0])
 
-    with c4:
-        st.markdown("<div class='panel'><h4>Trend vs anno scorso</h4></div>", unsafe_allow_html=True)
+    with d:
+        section_open("Trend vs anno scorso", "Confronto cumulativo")
         if not cumulative_metric_df.empty:
+            color_map = {str(y): "#94c5ff" for y in cumulative_metric_df["year"].astype(str).unique()}
+            if str(distance_compare["current_year"]) in color_map:
+                color_map[str(distance_compare["current_year"])] = ACCENT
+
+            cumulative_metric_df = cumulative_metric_df.copy()
+            cumulative_metric_df["year_str"] = cumulative_metric_df["year"].astype(str)
+
             fig = px.line(
                 cumulative_metric_df,
                 x="month_label",
                 y="cumulative",
-                color="year",
+                color="year_str",
                 markers=True,
+                color_discrete_map=color_map,
             )
-            fig = make_plot_layout(fig, height=320)
+            fig = plot_style(fig, height=325)
             st.plotly_chart(fig, use_container_width=True)
             st.markdown(
-                f"<div class='pill'>Sei a {fmt_pct(distance_compare['delta_pct'])} rispetto al {distance_compare['previous_year']}</div>",
+                f"<span class='pill'>Sei a {fmt_pct(distance_compare['delta_pct'])} rispetto al {distance_compare['previous_year']}</span>",
                 unsafe_allow_html=True,
             )
+        else:
+            st.markdown("<div class='big-empty'>Nessun confronto disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-    with c5:
-        st.markdown("<div class='panel'><h4>Migliori performance</h4></div>", unsafe_allow_html=True)
+    with e:
+        section_open("Migliori performance")
         if bp.empty:
-            st.info("Nessun dato disponibile.")
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
             for _, row in bp.iterrows():
                 st.markdown(
-                    f"""**{row['value']}**
-<span class='tiny'>{row['label']} · {row['date']} · {row['sport']}</span>""",
+                    f"""
+                    <div class="insight-row">
+                        <div class="insight-main">{row['value']}</div>
+                        <div class="insight-sub">{row['label']} · {row['date']} · {row['sport']}</div>
+                    </div>
+                    """,
                     unsafe_allow_html=True,
                 )
-                st.divider()
+        section_close()
 
-    with c6:
-        st.markdown("<div class='panel'><h4>Zone di frequenza</h4></div>", unsafe_allow_html=True)
+    with f:
+        section_open("Zone di frequenza", "Distribuzione attività")
         if zones.empty:
-            st.info("Nessun dato disponibile.")
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
             for _, row in zones.iterrows():
-                st.markdown(f"**{row['zone']}** — {row['activities_pct']:.0f}% attività")
+                st.markdown(
+                    f"""
+                    <div class="insight-row">
+                        <div class="insight-main">{row['zone']}</div>
+                        <div class="insight-sub">{row['activities_pct']:.0f}% attività · {row['time_pct']:.0f}% tempo</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        section_close()
 
-    c7, c8, c9 = st.columns(3)
-    with c7:
-        st.markdown(
-            f"""
-            <div class="panel">
-                <h4>Giorno preferito</h4>
-                <div class="kpi-value" style="font-size:1.4rem;">{fav_day['weekday']}</div>
-                <div class="tiny">{fav_day['pct']:.0f}% delle attività</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with c8:
-        st.markdown(
-            f"""
-            <div class="panel">
-                <h4>Settimana più attiva</h4>
-                <div class="kpi-value" style="font-size:1.4rem;">{active_week.get('week', '-')}</div>
-                <div class="tiny">{active_week.get('activities', 0)} attività</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with c9:
-        st.markdown(
-            f"""
-            <div class="panel">
-                <h4>Sport principale</h4>
-                <div class="kpi-value" style="font-size:1.4rem;">{main_sport['sport']}</div>
-                <div class="tiny">{main_sport['pct']:.0f}% della distanza</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    g, h, i = st.columns(3)
+    with g:
+        st.markdown(mini_stat_html("Giorno preferito", fav_day["weekday"], f"{fav_day['pct']:.0f}% delle attività"), unsafe_allow_html=True)
+    with h:
+        st.markdown(mini_stat_html("Settimana più attiva", active_week.get("week", "-"), f"{active_week.get('activities', 0)} attività"), unsafe_allow_html=True)
+    with i:
+        st.markdown(mini_stat_html("Sport principale", main_sport["sport"], f"{main_sport['pct']:.0f}% della distanza"), unsafe_allow_html=True)
 
-# ------------------------------------------------------------
-# Per sport
-# ------------------------------------------------------------
+
+# ============================================================
+# PER SPORT
+# ============================================================
 
 with per_sport_tab:
-    c1, c2 = st.columns([2.0, 1.0])
+    a, b = st.columns([2.0, 0.95])
 
-    with c1:
-        st.markdown("<div class='panel'><h4>Riepilogo per sport</h4></div>", unsafe_allow_html=True)
+    with a:
+        section_open("Riepilogo per sport")
         show = sport_summary_df.rename(
             columns={
                 "sport_label": "Sport",
                 "activities": "Attività",
-                "distance_km": "Distanza",
-                "moving_time_h": "Tempo",
-                "elevation_m": "Dislivello",
+                "distance_km": "Distanza (km)",
+                "moving_time_h": "Tempo (h)",
+                "elevation_m": "Dislivello (m)",
                 "avg_speed_kmh": "Vel. media",
             }
-        )
-        st.dataframe(show, use_container_width=True, hide_index=True)
+        ).copy()
 
-        st.markdown("<div class='panel'><h4>Confronto distanza per sport</h4></div>", unsafe_allow_html=True)
-        fig = px.bar(
-            sport_summary_df.sort_values("distance_km", ascending=True),
-            x="distance_km",
-            y="sport_label",
-            orientation="h",
-        )
-        fig = make_plot_layout(fig, height=330)
-        st.plotly_chart(fig, use_container_width=True)
+        numeric_cols = ["Distanza (km)", "Tempo (h)", "Dislivello (m)", "Vel. media"]
+        for col in numeric_cols:
+            if col in show.columns:
+                show[col] = show[col].map(lambda x: f"{x:,.1f}")
 
-    with c2:
-        st.markdown("<div class='panel'><h4>Top sport</h4></div>", unsafe_allow_html=True)
+        render_html_table(show)
+        section_close()
 
-        st.markdown("**Per distanza**")
+        section_open("Confronto distanza per sport")
+        if not sport_summary_df.empty:
+            color_map = sport_color_map(sport_summary_df["sport_label"].dropna().unique())
+            fig = px.bar(
+                sport_summary_df.sort_values("distance_km", ascending=True),
+                x="distance_km",
+                y="sport_label",
+                orientation="h",
+                color="sport_label",
+                color_discrete_map=color_map,
+            )
+            fig = plot_style(fig, height=355, show_legend=False)
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
+
+    with b:
+        section_open("Top sport")
+        st.markdown("<div class='tiny' style='margin-bottom:8px;'>per distanza</div>", unsafe_allow_html=True)
         for r in top_sports["distance"]:
-            st.markdown(f"{r['sport_label']} — {fmt_km(r['distance_km'])}")
+            st.markdown(f"<div class='insight-row'><div class='insight-main'>{r['sport_label']}</div><div class='insight-sub'>{fmt_km(r['distance_km'])}</div></div>", unsafe_allow_html=True)
 
-        st.divider()
-
-        st.markdown("**Per tempo**")
+        st.markdown("<div class='tiny' style='margin-top:10px; margin-bottom:8px;'>per tempo</div>", unsafe_allow_html=True)
         for r in top_sports["time"]:
-            st.markdown(f"{r['sport_label']} — {fmt_h(r['moving_time_h'])}")
+            st.markdown(f"<div class='insight-row'><div class='insight-main'>{r['sport_label']}</div><div class='insight-sub'>{fmt_h(r['moving_time_h'])}</div></div>", unsafe_allow_html=True)
 
-        st.divider()
-
-        st.markdown("**Per dislivello**")
+        st.markdown("<div class='tiny' style='margin-top:10px; margin-bottom:8px;'>per dislivello</div>", unsafe_allow_html=True)
         for r in top_sports["elevation"]:
-            st.markdown(f"{r['sport_label']} — {fmt_m(r['elevation_m'])}")
+            st.markdown(f"<div class='insight-row'><div class='insight-main'>{r['sport_label']}</div><div class='insight-sub'>{fmt_m(r['elevation_m'])}</div></div>", unsafe_allow_html=True)
+        section_close()
 
         target_distance = max(1.0, kpis["distance_km"] * 1.5)
         progress_pct = min(100.0, (kpis["distance_km"] / target_distance) * 100.0)
+        st.markdown(mini_stat_html("Obiettivo annuale", f"{progress_pct:.0f}%", f"{fmt_km(kpis['distance_km'])} / {fmt_km(target_distance)}"), unsafe_allow_html=True)
 
-        st.markdown(
-            f"""
-            <div class="panel">
-                <h4>Obiettivo annuale</h4>
-                <div class="kpi-value" style="font-size:1.4rem;">{progress_pct:.0f}%</div>
-                <div class="tiny">{fmt_km(kpis['distance_km'])} / {fmt_km(target_distance)}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
 
-# ------------------------------------------------------------
-# Trend
-# ------------------------------------------------------------
+# ============================================================
+# TREND
+# ============================================================
 
 with trend_tab:
-    c1, c2 = st.columns([2.0, 1.0])
+    a, b = st.columns([1.95, 1.0])
 
-    with c1:
-        st.markdown("<div class='panel'><h4>Trend cumulativo</h4></div>", unsafe_allow_html=True)
+    with a:
+        section_open("Trend cumulativo")
         if not cumulative_metric_df.empty:
+            temp = cumulative_metric_df.copy()
+            temp["year_str"] = temp["year"].astype(str)
+            color_map = {str(y): "#94c5ff" for y in temp["year"].unique()}
+            color_map[str(distance_compare["current_year"])] = ACCENT
+
             fig = px.line(
-                cumulative_metric_df,
+                temp,
                 x="month_label",
                 y="cumulative",
-                color="year",
+                color="year_str",
                 markers=True,
+                color_discrete_map=color_map,
             )
-            fig = make_plot_layout(fig, height=330)
+            fig = plot_style(fig, height=340)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-        st.markdown("<div class='panel'><h4>Trend mensile</h4></div>", unsafe_allow_html=True)
+        section_open("Trend mensile", f"Metrica: {metric_label}")
         if not trend_metric_df.empty:
             fig = px.line(
                 trend_metric_df,
                 x="month",
                 y=selected_metric,
                 markers=True,
+                line_shape="linear",
             )
-            fig = make_plot_layout(fig, height=330)
+            fig.update_traces(line=dict(color=ACCENT, width=3))
+            fig = plot_style(fig, height=340, show_legend=False)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-    with c2:
-        st.markdown("<div class='panel'><h4>Progresso</h4></div>", unsafe_allow_html=True)
-        target_value = max(1.0, distance_compare["previous"] * 1.10 if distance_compare["previous"] > 0 else kpis["distance_km"] * 1.25)
+    with b:
+        section_open("Progresso")
+        target_value = max(
+            1.0,
+            distance_compare["previous"] * 1.10 if distance_compare["previous"] > 0 else kpis["distance_km"] * 1.25,
+        )
         progress = min(100.0, (kpis["distance_km"] / target_value) * 100.0)
 
         fig = go.Figure(
             go.Indicator(
                 mode="gauge+number",
                 value=progress,
-                number={"suffix": "%"},
+                number={"suffix": "%", "font": {"size": 42}},
                 gauge={
-                    "axis": {"range": [0, 100]},
-                    "bar": {"color": "#22c55e"},
-                    "bgcolor": "#1f2937",
+                    "axis": {"range": [0, 100], "tickcolor": TEXT},
+                    "bar": {"color": GREEN},
+                    "bgcolor": "#16233f",
                     "borderwidth": 0,
+                    "steps": [
+                        {"range": [0, 50], "color": "#1b2b4c"},
+                        {"range": [50, 100], "color": "#233559"},
+                    ],
                 },
             )
         )
-        fig = make_plot_layout(fig, height=250)
+        fig = plot_style(fig, height=265, show_legend=False)
         st.plotly_chart(fig, use_container_width=True)
+        st.markdown(f"<div class='tiny'>{fmt_km(kpis['distance_km'])} distanza percorsa</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='tiny'>su target {fmt_km(target_value)}</div>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Miglior mese", month_best_worst["best_month"], fmt_km(month_best_worst["best_value"])), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Peggior mese", month_best_worst["worst_month"], fmt_km(month_best_worst["worst_value"])), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Stabilità", f"{consistency:.0f}/100", "indice di costanza"), unsafe_allow_html=True)
+        section_close()
 
-        st.markdown(f"**{fmt_km(kpis['distance_km'])}** distanza percorsa")
-        st.markdown(f"<span class='tiny'>su target {fmt_km(target_value)}</span>", unsafe_allow_html=True)
-
-        st.divider()
-
-        st.markdown("**Miglior mese**")
-        st.markdown(f"{bw_distance['best_month']} — {fmt_km(bw_distance['best_value'])}")
-
-        st.markdown("**Peggior mese**")
-        st.markdown(f"{bw_distance['worst_month']} — {fmt_km(bw_distance['worst_value'])}")
-
-        st.markdown("**Stabilità**")
-        st.markdown(f"{consistency:.0f}/100")
-
-    c3, c4, c5, c6 = st.columns(4)
-    with c3:
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
         st.metric("Distanza totale", fmt_km(kpis["distance_km"]), fmt_pct(distance_compare["delta_pct"]))
-    with c4:
+    with m2:
         st.metric("Tempo totale", fmt_h(kpis["moving_time_h"]), fmt_pct(time_compare["delta_pct"]))
-    with c5:
+    with m3:
         st.metric("Dislivello totale", fmt_m(kpis["elevation_m"]), fmt_pct(elev_compare["delta_pct"]))
-    with c6:
-        st.metric("Attività totali", f"{kpis['activities']}", None)
+    with m4:
+        st.metric("Attività totali", fmt_int(kpis["activities"]))
 
-# ------------------------------------------------------------
-# Performance
-# ------------------------------------------------------------
+
+# ============================================================
+# PERFORMANCE
+# ============================================================
 
 with performance_tab:
-    c1, c2, c3 = st.columns([1.1, 1.2, 1.0])
+    a, b, c = st.columns([1.0, 1.1, 0.95])
 
-    with c1:
-        st.markdown("<div class='panel'><h4>Top 5 - più lunghe distanze</h4></div>", unsafe_allow_html=True)
-        rank_show = filtered_df.sort_values("distance_km", ascending=False).head(5).copy()
-        if rank_show.empty:
-            st.info("Nessun dato disponibile.")
+    with a:
+        section_open("Top 5 - più lunghe distanze")
+        top5 = filtered_df.sort_values("distance_km", ascending=False).head(5).copy()
+        if top5.empty:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
-            rank_show["date_str"] = pd.to_datetime(rank_show["start_date_local"]).dt.strftime("%d %b %Y")
-            for idx, (_, row) in enumerate(rank_show.iterrows(), start=1):
+            top5["date_str"] = pd.to_datetime(top5["start_date_local"]).dt.strftime("%d %b %Y")
+            for idx, (_, row) in enumerate(top5.iterrows(), start=1):
                 st.markdown(
-                    f"""**{idx}. {row['distance_km']:.1f} km**
-<span class='tiny'>{row['sport_label']} · {row['date_str']}</span>""",
+                    f"""
+                    <div class="insight-row">
+                        <div class="insight-main">{idx}. {row['distance_km']:.1f} km</div>
+                        <div class="insight-sub">{row['sport_label']} · {row['date_str']}</div>
+                    </div>
+                    """,
                     unsafe_allow_html=True,
                 )
-                st.divider()
+        section_close()
 
-    with c2:
-        st.markdown("<div class='panel'><h4>Distribuzione attività per distanza</h4></div>", unsafe_allow_html=True)
+    with b:
+        section_open("Distribuzione attività per distanza")
         if not buckets.empty:
             fig = px.bar(buckets, x="bucket", y="count")
-            fig = make_plot_layout(fig, height=320)
+            fig.update_traces(marker_color=ACCENT)
+            fig = plot_style(fig, height=340, show_legend=False)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-    with c3:
-        st.markdown("<div class='panel'><h4>Record personali</h4></div>", unsafe_allow_html=True)
+    with c:
+        section_open("Record personali")
         if records.empty:
-            st.info("Nessun dato disponibile.")
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
             for _, row in records.iterrows():
                 st.markdown(
-                    f"""**{row['record']}**
-<span class='tiny'>{row['value']} · {row['date']}</span>""",
+                    f"""
+                    <div class="insight-row">
+                        <div class="insight-main">{row['record']}</div>
+                        <div class="insight-sub">{row['value']} · {row['date']}</div>
+                    </div>
+                    """,
                     unsafe_allow_html=True,
                 )
-                st.divider()
+        section_close()
 
-# ------------------------------------------------------------
-# Proiezioni
-# ------------------------------------------------------------
+
+# ============================================================
+# PROJECTIONS
+# ============================================================
 
 with projections_tab:
-    c1, c2 = st.columns([1.4, 1.0])
+    a, b = st.columns([1.45, 1.0])
 
-    with c1:
-        st.markdown("<div class='panel'><h4>Proiezione fine anno per sport</h4></div>", unsafe_allow_html=True)
+    with a:
+        section_open("Proiezione fine anno per sport")
         if proj.empty:
-            st.info("Nessun dato disponibile.")
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
             proj_show = proj[[
                 "sport_label",
@@ -709,82 +1071,148 @@ with projections_tab:
                     "delta_elevation_pct": "Δ Dislivello %",
                     "delta_activities_pct": "Δ Attività %",
                 }
-            )
-            st.dataframe(proj_show, use_container_width=True, hide_index=True)
+            ).copy()
 
-        st.markdown("<div class='panel'><h4>Proiezione distanza totale</h4></div>", unsafe_allow_html=True)
+            for col in ["Distanza (km)", "Tempo (h)", "Dislivello (m)", "Attività", "Δ Distanza %", "Δ Tempo %", "Δ Dislivello %", "Δ Attività %"]:
+                if col in proj_show.columns:
+                    proj_show[col] = proj_show[col].map(lambda x: f"{x:,.1f}")
+
+            render_html_table(proj_show)
+        section_close()
+
+        section_open("Proiezione distanza totale")
         if not proj.empty:
-            fig = px.bar(proj, x="sport_label", y="proj_distance_km")
-            fig = make_plot_layout(fig, height=330)
+            color_map = sport_color_map(proj["sport_label"].dropna().unique())
+            fig = px.bar(
+                proj,
+                x="sport_label",
+                y="proj_distance_km",
+                color="sport_label",
+                color_discrete_map=color_map,
+            )
+            fig = plot_style(fig, height=320, show_legend=False)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-    with c2:
-        st.markdown("<div class='panel'><h4>Numeri chiave</h4></div>", unsafe_allow_html=True)
+    with b:
+        section_open("Numeri chiave")
         if not proj.empty:
             total_proj_km = float(proj["proj_distance_km"].sum())
             total_proj_h = float(proj["proj_time_h"].sum())
             total_proj_m = float(proj["proj_elevation_m"].sum())
-            total_proj_acts = float(proj["proj_activities"].sum())
+            total_proj_a = float(proj["proj_activities"].sum())
 
-            st.metric("Proiezione 2025/anno in corso - km", fmt_km(total_proj_km))
-            st.metric("Proiezione tempo", fmt_h(total_proj_h))
-            st.metric("Proiezione dislivello", fmt_m(total_proj_m))
-            st.metric("Proiezione attività", f"{total_proj_acts:.0f}")
+            st.markdown(mini_stat_html("Proiezione distanza", fmt_km(total_proj_km), "anno in corso"), unsafe_allow_html=True)
+            st.markdown(mini_stat_html("Proiezione tempo", fmt_h(total_proj_h), "anno in corso"), unsafe_allow_html=True)
+            st.markdown(mini_stat_html("Proiezione dislivello", fmt_m(total_proj_m), "anno in corso"), unsafe_allow_html=True)
+            st.markdown(mini_stat_html("Proiezione attività", fmt_int(total_proj_a), "anno in corso"), unsafe_allow_html=True)
 
             prev_total = distance_compare["previous"]
-            reach_pct = 100.0 if prev_total <= 0 else (total_proj_km / prev_total) * 100.0
-            reach_pct = max(0.0, reach_pct)
-
-            st.divider()
-            st.markdown(f"**Probabilità di superare l'anno scorso:** {min(reach_pct, 100):.0f}%")
+            reach_pct = 100.0 if prev_total <= 0 else min(100.0, (total_proj_km / prev_total) * 100.0)
+            st.markdown(
+                f"""
+                <div class="mini-stat">
+                    <div class="mini-label">Probabilità di superare l'anno scorso</div>
+                    <div class="mini-value">{reach_pct:.0f}%</div>
+                    <div class="mini-sub">con il ritmo attuale</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
         else:
-            st.info("Nessun dato disponibile.")
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-# ------------------------------------------------------------
-# Zone
-# ------------------------------------------------------------
+
+# ============================================================
+# ZONES
+# ============================================================
 
 with zone_tab:
-    c1, c2 = st.columns([1.0, 1.0])
+    a, b = st.columns([1.0, 1.0])
 
-    with c1:
-        st.markdown("<div class='panel'><h4>Distribuzione attività per zona</h4></div>", unsafe_allow_html=True)
-        if zones.empty:
-            st.info("Nessun dato disponibile.")
-        else:
-            fig = px.pie(zones, names="zone", values="activities", hole=0.5)
-            fig = make_plot_layout(fig, height=320)
-            st.plotly_chart(fig, use_container_width=True)
-
-    with c2:
-        st.markdown("<div class='panel'><h4>Tempo in zona (ore)</h4></div>", unsafe_allow_html=True)
+    with a:
+        section_open("Distribuzione attività per zona")
         if not zones.empty:
+            zone_colors = {
+                "Zona 1 (Recupero)": "#60a5fa",
+                "Zona 2 (Endurance)": "#4ade80",
+                "Zona 3 (Tempo)": "#f59e0b",
+                "Zona 4 (Soglia)": "#f97316",
+                "Zona 5 (VO2 Max)": "#ef4444",
+            }
+            fig = px.pie(
+                zones,
+                names="zone",
+                values="activities",
+                hole=0.58,
+                color="zone",
+                color_discrete_map=zone_colors,
+            )
+            fig = plot_style(fig, height=320)
+            fig.update_traces(textinfo="percent")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
+
+    with b:
+        section_open("Tempo in zona (ore)")
+        if not zones.empty:
+            zone_colors = {
+                "Zona 1 (Recupero)": "#60a5fa",
+                "Zona 2 (Endurance)": "#4ade80",
+                "Zona 3 (Tempo)": "#f59e0b",
+                "Zona 4 (Soglia)": "#f97316",
+                "Zona 5 (VO2 Max)": "#ef4444",
+            }
             fig = px.bar(
                 zones.sort_values("moving_time_h", ascending=True),
                 x="moving_time_h",
                 y="zone",
                 orientation="h",
+                color="zone",
+                color_discrete_map=zone_colors,
             )
-            fig = make_plot_layout(fig, height=320)
+            fig = plot_style(fig, height=320, show_legend=False)
             st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
+        section_close()
 
-    c3, c4, c5, c6 = st.columns(4)
     if not zones.empty:
         zone2_pct = float(zones.loc[zones["zone"] == "Zona 2 (Endurance)", "time_pct"].sum()) if "Zona 2 (Endurance)" in zones["zone"].astype(str).tolist() else 0.0
         avg_intensity = float(filtered_df["effort_score"].mean()) if "effort_score" in filtered_df.columns else 0.0
         weekly_load = float(filtered_df.groupby(["year", "week"])["moving_time_h"].sum().mean()) if not filtered_df.empty else 0.0
-        intensity_delta = float(filtered_df["effort_score"].tail(min(10, len(filtered_df))).mean()) if not filtered_df.empty else 0.0
+        trend_int = float(filtered_df["effort_score"].tail(min(10, len(filtered_df))).mean()) if not filtered_df.empty else 0.0
 
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            st.markdown(mini_stat_html("Intensità media", f"{avg_intensity:.1f}", "su 5 zone proxy"), unsafe_allow_html=True)
+        with c2:
+            st.markdown(mini_stat_html("Attività in zona 2", f"{zone2_pct:.0f}%", "tempo in zona 2"), unsafe_allow_html=True)
         with c3:
-            st.metric("Intensità media", f"{avg_intensity:.1f}")
+            st.markdown(mini_stat_html("Carico settimanale", f"{weekly_load:.1f} h", "media ultime settimane"), unsafe_allow_html=True)
         with c4:
-            st.metric("Attività in zona 2", f"{zone2_pct:.0f}%")
-        with c5:
-            st.metric("Carico settimanale", f"{weekly_load:.1f} h")
-        with c6:
-            st.metric("Trend intensità", f"{intensity_delta:.0f}")
+            st.markdown(mini_stat_html("Trend intensità", f"{trend_int:.0f}", "proxy score recente"), unsafe_allow_html=True)
 
-        st.markdown("<div class='panel'><h4>Distribuzione tempo in zona (%)</h4></div>", unsafe_allow_html=True)
-        fig = px.bar(zones, x="zone", y="time_pct")
-        fig = make_plot_layout(fig, height=260)
+        section_open("Distribuzione tempo in zona (%)")
+        zone_colors = {
+            "Zona 1 (Recupero)": "#60a5fa",
+            "Zona 2 (Endurance)": "#4ade80",
+            "Zona 3 (Tempo)": "#f59e0b",
+            "Zona 4 (Soglia)": "#f97316",
+            "Zona 5 (VO2 Max)": "#ef4444",
+        }
+        fig = px.bar(
+            zones,
+            x="zone",
+            y="time_pct",
+            color="zone",
+            color_discrete_map=zone_colors,
+        )
+        fig = plot_style(fig, height=270, show_legend=False)
         st.plotly_chart(fig, use_container_width=True)
+        section_close()
