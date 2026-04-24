@@ -1,33 +1,21 @@
 from __future__ import annotations
 
 from datetime import date
+import math
+from typing import Iterable
+
 import numpy as np
 import pandas as pd
 
-SPORT_NAME_MAP = {
-    "Ride": "Ciclismo",
-    "VirtualRide": "VirtualRide",
-    "GravelRide": "GravelRide",
-    "Run": "Corsa",
-    "TrailRun": "TrailRun",
-    "Walk": "Camminata",
-    "Hike": "Escursionismo",
-    "AlpineSki": "Sci alpino",
-    "BackcountrySki": "Sci alpinismo",
-    "NordicSki": "Sci nordico",
-    "Swim": "Nuoto",
-    "StandUpPaddling": "SUP",
-    "Surfing": "Surf",
-    "Workout": "Workout",
-}
 
-ZONE_LABELS = [
-    "Zona 1 (Recupero)",
-    "Zona 2 (Endurance)",
-    "Zona 3 (Tempo)",
-    "Zona 4 (Soglia)",
-    "Zona 5 (VO2 Max)",
-]
+def _empty_series(df: pd.DataFrame, default: float = 0.0) -> pd.Series:
+    return pd.Series([default] * len(df), index=df.index, dtype="float64")
+
+
+def _numeric_col(df: pd.DataFrame, col_name: str, default: float = 0.0) -> pd.Series:
+    if col_name in df.columns:
+        return pd.to_numeric(df[col_name], errors="coerce").fillna(default)
+    return _empty_series(df, default=default)
 
 
 def normalize_activities(raw: list[dict]) -> pd.DataFrame:
@@ -35,208 +23,158 @@ def normalize_activities(raw: list[dict]) -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.DataFrame(raw).copy()
-    if "sport_type" not in df.columns and "type" in df.columns:
-        df["sport_type"] = df["type"]
 
-    df["sport_type"] = df["sport_type"].fillna("Altro")
-    df["sport_label"] = df["sport_type"].map(SPORT_NAME_MAP).fillna(df["sport_type"])
-    df["start_date_local"] = pd.to_datetime(df.get("start_date_local"), errors="coerce")
-    df["distance_km"] = pd.to_numeric(df.get("distance"), errors="coerce").fillna(0) / 1000
-    df["moving_time_h"] = pd.to_numeric(df.get("moving_time"), errors="coerce").fillna(0) / 3600
-    df["elapsed_time_h"] = pd.to_numeric(df.get("elapsed_time"), errors="coerce").fillna(0) / 3600
-    df["elevation_m"] = pd.to_numeric(df.get("total_elevation_gain"), errors="coerce").fillna(0)
-    df["avg_speed_kmh"] = pd.to_numeric(df.get("average_speed"), errors="coerce").fillna(0) * 3.6
-    df["max_speed_kmh"] = pd.to_numeric(df.get("max_speed"), errors="coerce").fillna(0) * 3.6
-    df["suffer_score"] = pd.to_numeric(df.get("suffer_score"), errors="coerce").fillna(0)
-    df["achievement_count"] = pd.to_numeric(df.get("achievement_count"), errors="coerce").fillna(0)
-    df["commute"] = df.get("commute", False).fillna(False)
-    df["trainer"] = df.get("trainer", False).fillna(False)
-    df["manual"] = df.get("manual", False).fillna(False)
-    df["month"] = df["start_date_local"].dt.to_period("M").astype(str)
-    df["month_label"] = df["start_date_local"].dt.strftime("%b %Y")
+    # Date
+    if "start_date_local" in df.columns:
+        df["start_date_local"] = pd.to_datetime(df["start_date_local"], errors="coerce")
+    elif "start_date" in df.columns:
+        df["start_date_local"] = pd.to_datetime(df["start_date"], errors="coerce")
+    else:
+        df["start_date_local"] = pd.NaT
+
+    # Sport
+    if "sport_type" not in df.columns:
+        if "type" in df.columns:
+            df["sport_type"] = df["type"]
+        else:
+            df["sport_type"] = "Other"
+
+    # Testo base
+    if "name" not in df.columns:
+        df["name"] = "Attività"
+
+    # Colonne numeriche robuste
+    df["distance"] = _numeric_col(df, "distance")
+    df["moving_time"] = _numeric_col(df, "moving_time")
+    df["elapsed_time"] = _numeric_col(df, "elapsed_time")
+    df["total_elevation_gain"] = _numeric_col(df, "total_elevation_gain")
+    df["average_speed"] = _numeric_col(df, "average_speed")
+    df["max_speed"] = _numeric_col(df, "max_speed")
+    df["average_heartrate"] = _numeric_col(df, "average_heartrate")
+    df["max_heartrate"] = _numeric_col(df, "max_heartrate")
+    df["average_watts"] = _numeric_col(df, "average_watts")
+    df["kilojoules"] = _numeric_col(df, "kilojoules")
+    df["suffer_score"] = _numeric_col(df, "suffer_score")
+
+    if "id" not in df.columns:
+        df["id"] = range(1, len(df) + 1)
+
+    # Boolean / flag
+    for col in ["trainer", "commute", "manual"]:
+        if col not in df.columns:
+            df[col] = False
+        df[col] = df[col].fillna(False).astype(bool)
+
+    # Metriche derivate
+    df["distance_km"] = df["distance"] / 1000.0
+    df["moving_time_h"] = df["moving_time"] / 3600.0
+    df["elapsed_time_h"] = df["elapsed_time"] / 3600.0
+    df["elevation_m"] = df["total_elevation_gain"]
+    df["avg_speed_kmh"] = df["average_speed"] * 3.6
+    df["max_speed_kmh"] = df["max_speed"] * 3.6
+
+    def _pace_min_km(row: pd.Series) -> float | None:
+        if row["distance_km"] > 0 and row["moving_time"] > 0:
+            return (row["moving_time"] / 60.0) / row["distance_km"]
+        return None
+
+    df["pace_min_km"] = df.apply(_pace_min_km, axis=1)
+
+    # Tempo
     df["year"] = df["start_date_local"].dt.year
+    df["month_num"] = df["start_date_local"].dt.month
+    df["month"] = df["start_date_local"].dt.to_period("M").astype(str)
     df["week"] = df["start_date_local"].dt.isocalendar().week.astype("Int64")
     df["weekday_num"] = df["start_date_local"].dt.weekday
-    df["weekday_name"] = df["start_date_local"].dt.day_name()
+    df["weekday"] = df["start_date_local"].dt.day_name()
     df["day"] = df["start_date_local"].dt.date
-    df["pace_min_km"] = np.where(df["distance_km"] > 0, (df["moving_time_h"] * 60) / df["distance_km"], np.nan)
+
+    # Label sport
+    sport_map = {
+        "Ride": "Ciclismo",
+        "VirtualRide": "VirtualRide",
+        "GravelRide": "GravelRide",
+        "EBikeRide": "E-Bike",
+        "Run": "Corsa",
+        "TrailRun": "TrailRun",
+        "Walk": "Camminata",
+        "Hike": "Escursionismo",
+        "AlpineSki": "Sci alpino",
+        "BackcountrySki": "Sci alpinismo",
+        "NordicSki": "Sci nordico",
+        "Swim": "Nuoto",
+        "Workout": "Workout",
+        "StandUpPaddling": "SUP",
+        "Surfing": "Surf",
+        "Rowing": "Canottaggio",
+        "WeightTraining": "Pesi",
+        "Yoga": "Yoga",
+    }
+    df["sport_label"] = df["sport_type"].map(sport_map).fillna(df["sport_type"])
+
+    # Metrica proxy intensità
+    # Formula semplice, robusta e sempre disponibile
     df["effort_score"] = (
-        df["distance_km"] * 1.0
-        + df["moving_time_h"] * 12.0
-        + df["elevation_m"] / 150.0
-        + df["achievement_count"] * 2.0
-        + df["suffer_score"] / 8.0
-    )
-    return df.sort_values("start_date_local").reset_index(drop=True)
+        df["distance_km"] * 1.2
+        + df["moving_time_h"] * 12
+        + df["elevation_m"] / 250.0
+        + df["average_heartrate"] / 18.0
+        + df["average_watts"] / 35.0
+    ).fillna(0)
 
-
-def available_sports(df: pd.DataFrame) -> list[str]:
-    if df.empty:
-        return []
-    return sorted(df["sport_label"].dropna().unique().tolist())
+    return df
 
 
 def filter_activities(
     df: pd.DataFrame,
-    sports: list[str] | None = None,
-    year_mode: str = "Tutti gli anni",
+    selected_sports: Iterable[str] | None = None,
+    years: Iterable[int] | None = None,
 ) -> pd.DataFrame:
     if df.empty:
         return df.copy()
+
     out = df.copy()
-    if sports and "Tutti gli sport" not in sports:
-        out = out[out["sport_label"].isin(sports)]
-    if year_mode == "Anno in corso":
-        out = out[out["year"] == date.today().year]
-    elif year_mode == "Anno scorso":
-        out = out[out["year"] == date.today().year - 1]
-    return out.sort_values("start_date_local")
 
-
-def format_kpi_delta(current: float, previous: float, suffix: str = "") -> str:
-    if previous <= 0:
-        return "n.d."
-    delta = ((current - previous) / previous) * 100
-    sign = "+" if delta >= 0 else ""
-    return f"{sign}{delta:.0f}%{suffix}"
-
-
-def compute_overview_kpis(filtered_df: pd.DataFrame, full_df: pd.DataFrame) -> dict[str, dict[str, str | float]]:
-    if filtered_df.empty:
-        return {}
-
-    selected_years = sorted(filtered_df["year"].dropna().unique().tolist())
-    focus_year = max(selected_years) if selected_years else date.today().year
-    current = filtered_df[filtered_df["year"] == focus_year]
-    prev = full_df[(full_df["year"] == focus_year - 1)]
-    selected_sports = sorted(filtered_df["sport_label"].unique().tolist())
     if selected_sports:
-        prev = prev[prev["sport_label"].isin(selected_sports)]
+        selected_sports = list(selected_sports)
+        out = out[out["sport_label"].isin(selected_sports)]
 
-    current_cutoff = current["start_date_local"].max()
-    if pd.notna(current_cutoff):
-        prev = prev[prev["start_date_local"].dt.dayofyear <= int(current_cutoff.dayofyear)]
+    if years:
+        years = list(years)
+        out = out[out["year"].isin(years)]
 
-    metrics = {
-        "Attività": (float(len(current)), float(len(prev))),
-        "Distanza": (float(current["distance_km"].sum()), float(prev["distance_km"].sum())),
-        "Tempo": (float(current["moving_time_h"].sum()), float(prev["moving_time_h"].sum())),
-        "Dislivello": (float(current["elevation_m"].sum()), float(prev["elevation_m"].sum())),
-    }
-    out: dict[str, dict[str, str | float]] = {}
-    for key, (cur, prv) in metrics.items():
-        if key == "Attività":
-            value = f"{cur:,.0f}".replace(",", ".")
-        elif key == "Distanza":
-            value = f"{cur:,.1f} km".replace(",", "X").replace(".", ",").replace("X", ".")
-        elif key == "Tempo":
-            value = f"{cur:,.1f} h".replace(",", "X").replace(".", ",").replace("X", ".")
-        else:
-            value = f"{cur:,.0f} m".replace(",", ".")
-        out[key] = {"value": value, "delta": format_kpi_delta(cur, prv, " vs anno prec.")}
     return out
 
 
-def monthly_distance_by_sport(df: pd.DataFrame) -> pd.DataFrame:
+def kpi_summary(df: pd.DataFrame) -> dict:
     if df.empty:
-        return pd.DataFrame()
-    return (
-        df.groupby(["month", "sport_label"], as_index=False)
-        .agg(distance_km=("distance_km", "sum"))
-        .sort_values("month")
-    )
-
-
-def sport_distribution(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return pd.DataFrame()
-    out = (
-        df.groupby("sport_label", as_index=False)
-        .agg(distance_km=("distance_km", "sum"))
-        .sort_values("distance_km", ascending=False)
-    )
-    total = out["distance_km"].sum()
-    out["share"] = np.where(total > 0, out["distance_km"] / total * 100, 0)
-    return out
-
-
-def cumulative_year_vs_previous(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return pd.DataFrame()
-    years = sorted(df["year"].dropna().unique())
-    focus_year = max(years)
-    prev_year = focus_year - 1
-    tmp = df[df["year"].isin([focus_year, prev_year])].copy()
-    if tmp.empty:
-        return pd.DataFrame()
-    tmp["day_of_year"] = tmp["start_date_local"].dt.dayofyear
-    grouped = (
-        tmp.groupby(["year", "day_of_year"], as_index=False)
-        .agg(distance_km=("distance_km", "sum"))
-        .sort_values(["year", "day_of_year"])
-    )
-    grouped["cumulative_km"] = grouped.groupby("year")["distance_km"].cumsum()
-    return grouped
-
-
-def best_performances(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return pd.DataFrame()
-    picks = []
-    for metric, label in [("distance_km", "Ride più lunga"), ("distance_km", "Run più lunga"), ("elevation_m", "Dislivello in una attività")]:
-        if label.startswith("Ride"):
-            tmp = df[df["sport_label"].isin(["Ciclismo", "VirtualRide", "GravelRide"])].nlargest(1, metric)
-        elif label.startswith("Run"):
-            tmp = df[df["sport_label"].isin(["Corsa", "TrailRun"])].nlargest(1, metric)
-        else:
-            tmp = df.nlargest(1, metric)
-        if not tmp.empty:
-            row = tmp.iloc[0]
-            value = row[metric]
-            if metric == "distance_km":
-                value_text = f"{value:.1f} km"
-            else:
-                value_text = f"{value:,.0f} m".replace(",", ".")
-            picks.append(
-                {
-                    "label": label,
-                    "value": value_text,
-                    "date": row["start_date_local"].strftime("%d %b %Y"),
-                    "sport": row["sport_label"],
-                }
-            )
-    return pd.DataFrame(picks)
-
-
-def weekday_and_week_stats(df: pd.DataFrame) -> dict[str, str]:
-    if df.empty:
-        return {}
-    day_counts = df.groupby("weekday_name").size().sort_values(ascending=False)
-    preferred_day = day_counts.index[0]
-    preferred_share = day_counts.iloc[0] / len(df) * 100
-
-    tmp = df.copy()
-    tmp["yearweek"] = tmp["start_date_local"].dt.strftime("%G-W%V")
-    weekly = tmp.groupby("yearweek", as_index=False).agg(distance_km=("distance_km", "sum"), start=("start_date_local", "min"), end=("start_date_local", "max"))
-    weekly = weekly.sort_values("distance_km", ascending=False)
-    best_week = weekly.iloc[0]
-
-    sport_dist = df.groupby("sport_label", as_index=False).agg(distance_km=("distance_km", "sum")).sort_values("distance_km", ascending=False)
-    top_sport = sport_dist.iloc[0]
-    total = sport_dist["distance_km"].sum()
+        return {
+            "activities": 0,
+            "distance_km": 0.0,
+            "moving_time_h": 0.0,
+            "elevation_m": 0.0,
+            "avg_distance_km": 0.0,
+            "avg_time_h": 0.0,
+            "avg_elevation_m": 0.0,
+        }
 
     return {
-        "preferred_day": f"{preferred_day} · {preferred_share:.0f}% delle attività",
-        "best_week": f"{best_week['yearweek']} · {best_week['distance_km']:.0f} km",
-        "top_sport": f"{top_sport['sport_label']} · {top_sport['distance_km'] / total * 100:.0f}% distanza",
+        "activities": int(df["id"].count()),
+        "distance_km": float(df["distance_km"].sum()),
+        "moving_time_h": float(df["moving_time_h"].sum()),
+        "elevation_m": float(df["elevation_m"].sum()),
+        "avg_distance_km": float(df["distance_km"].mean()),
+        "avg_time_h": float(df["moving_time_h"].mean()),
+        "avg_elevation_m": float(df["elevation_m"].mean()),
     }
 
 
 def summary_by_sport(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
+
     out = (
-        df.groupby("sport_label", as_index=False)
+        df.groupby("sport_label", dropna=False)
         .agg(
             activities=("id", "count"),
             distance_km=("distance_km", "sum"),
@@ -244,104 +182,365 @@ def summary_by_sport(df: pd.DataFrame) -> pd.DataFrame:
             elevation_m=("elevation_m", "sum"),
             avg_speed_kmh=("avg_speed_kmh", "mean"),
         )
-        .sort_values("distance_km", ascending=False)
+        .reset_index()
+        .sort_values(["distance_km", "moving_time_h"], ascending=False)
     )
     return out
 
 
-def top_sports_panels(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    if df.empty:
-        return {}
-    return {
-        "per distanza": df.groupby("sport_label", as_index=False).agg(value=("distance_km", "sum")).sort_values("value", ascending=False).head(3),
-        "per tempo": df.groupby("sport_label", as_index=False).agg(value=("moving_time_h", "sum")).sort_values("value", ascending=False).head(3),
-        "per dislivello": df.groupby("sport_label", as_index=False).agg(value=("elevation_m", "sum")).sort_values("value", ascending=False).head(3),
-    }
-
-
-def trend_monthly(df: pd.DataFrame) -> pd.DataFrame:
+def monthly_by_sport(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
-    out = df.groupby(["month", "sport_label"], as_index=False).agg(
-        distance_km=("distance_km", "sum"),
-        moving_time_h=("moving_time_h", "sum"),
-        elevation_m=("elevation_m", "sum"),
-        activities=("id", "count"),
+
+    out = (
+        df.groupby(["month", "sport_label"], dropna=False)
+        .agg(
+            distance_km=("distance_km", "sum"),
+            moving_time_h=("moving_time_h", "sum"),
+            elevation_m=("elevation_m", "sum"),
+            activities=("id", "count"),
+        )
+        .reset_index()
+        .sort_values("month")
     )
-    return out.sort_values("month")
+    return out
 
 
-def trend_summary_cards(df: pd.DataFrame) -> dict[str, str]:
+def cumulative_by_year(df: pd.DataFrame, metric: str = "distance_km") -> pd.DataFrame:
     if df.empty:
-        return {}
-    monthly = df.groupby("month", as_index=False).agg(distance_km=("distance_km", "sum"))
-    best = monthly.sort_values("distance_km", ascending=False).iloc[0]
-    worst = monthly.sort_values("distance_km", ascending=True).iloc[0]
-    progress = df["distance_km"].sum()
-    target = max(3000.0, progress * 1.5)
-    consistency = int(min(100, (df.groupby("month").size() > 0).mean() * 100))
+        return pd.DataFrame()
+
+    temp = (
+        df.groupby(["year", "month_num"], dropna=False)[metric]
+        .sum()
+        .reset_index()
+        .sort_values(["year", "month_num"])
+    )
+    temp["cumulative"] = temp.groupby("year")[metric].cumsum()
+    temp["month_label"] = temp["month_num"].map(
+        {
+            1: "Gen", 2: "Feb", 3: "Mar", 4: "Apr", 5: "Mag", 6: "Giu",
+            7: "Lug", 8: "Ago", 9: "Set", 10: "Ott", 11: "Nov", 12: "Dic",
+        }
+    )
+    return temp
+
+
+def trend_monthly(df: pd.DataFrame, metric: str = "distance_km") -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame()
+
+    out = (
+        df.groupby(["month", "month_num"], dropna=False)[metric]
+        .sum()
+        .reset_index()
+        .sort_values(["month_num", "month"])
+    )
+    return out
+
+
+def compare_vs_previous_year(df: pd.DataFrame, metric: str = "distance_km") -> dict:
+    if df.empty or df["year"].dropna().empty:
+        return {"current": 0.0, "previous": 0.0, "delta_pct": 0.0}
+
+    current_year = int(df["year"].max())
+    previous_year = current_year - 1
+
+    current_df = df[df["year"] == current_year]
+    prev_df = df[df["year"] == previous_year]
+
+    current_total = float(current_df[metric].sum()) if not current_df.empty else 0.0
+    prev_total = float(prev_df[metric].sum()) if not prev_df.empty else 0.0
+
+    if prev_total == 0:
+        delta_pct = 0.0 if current_total == 0 else 100.0
+    else:
+        delta_pct = ((current_total - prev_total) / prev_total) * 100.0
+
     return {
-        "progress": f"{progress:,.1f} km su {target:,.0f} km obiettivo".replace(",", "X").replace(".", ",").replace("X", "."),
-        "progress_pct": f"{progress / target * 100:.0f}%",
-        "best_month": f"{best['month']} · {best['distance_km']:.1f} km",
-        "worst_month": f"{worst['month']} · {worst['distance_km']:.1f} km",
-        "consistency": f"Indice di costanza {consistency}/100",
+        "current": current_total,
+        "previous": prev_total,
+        "delta_pct": delta_pct,
+        "current_year": current_year,
+        "previous_year": previous_year,
     }
 
 
-def performance_rankings(df: pd.DataFrame) -> pd.DataFrame:
+def best_performances(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
-    out = df.nlargest(5, "distance_km")[["sport_label", "start_date_local", "distance_km", "moving_time_h", "elevation_m"]].copy()
-    out["date"] = out["start_date_local"].dt.strftime("%d %b %Y")
-    return out[["sport_label", "date", "distance_km", "moving_time_h", "elevation_m"]]
+
+    rows = []
+
+    longest = df.sort_values("distance_km", ascending=False).head(1)
+    if not longest.empty:
+        r = longest.iloc[0]
+        rows.append(
+            {
+                "label": "Ride più lunga" if "Ride" in str(r["sport_type"]) else "Distanza più lunga",
+                "value": f"{r['distance_km']:.1f} km",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+                "sport": r["sport_label"],
+            }
+        )
+
+    longest_run = df[df["sport_type"].isin(["Run", "TrailRun"])].sort_values("distance_km", ascending=False).head(1)
+    if not longest_run.empty:
+        r = longest_run.iloc[0]
+        rows.append(
+            {
+                "label": "Run più lunga",
+                "value": f"{r['distance_km']:.1f} km",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+                "sport": r["sport_label"],
+            }
+        )
+
+    biggest_climb = df.sort_values("elevation_m", ascending=False).head(1)
+    if not biggest_climb.empty:
+        r = biggest_climb.iloc[0]
+        rows.append(
+            {
+                "label": "Dislivello in una attività",
+                "value": f"{r['elevation_m']:.0f} m",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+                "sport": r["sport_label"],
+            }
+        )
+
+    longest_time = df.sort_values("moving_time_h", ascending=False).head(1)
+    if not longest_time.empty:
+        r = longest_time.iloc[0]
+        rows.append(
+            {
+                "label": "Tempo più lungo",
+                "value": f"{r['moving_time_h']:.1f} h",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+                "sport": r["sport_label"],
+            }
+        )
+
+    return pd.DataFrame(rows)
 
 
-def distance_bucket_distribution(df: pd.DataFrame) -> pd.DataFrame:
+def favorite_weekday(df: pd.DataFrame) -> dict:
+    if df.empty:
+        return {"weekday": "-", "pct": 0.0}
+
+    counts = df["weekday"].value_counts(dropna=True)
+    if counts.empty:
+        return {"weekday": "-", "pct": 0.0}
+
+    weekday = str(counts.index[0])
+    pct = float(counts.iloc[0] / len(df) * 100.0)
+    return {"weekday": weekday, "pct": pct}
+
+
+def most_active_week(df: pd.DataFrame) -> dict:
+    if df.empty:
+        return {"week": "-", "activities": 0}
+
+    temp = (
+        df.dropna(subset=["week"])
+        .groupby(["year", "week"])
+        .size()
+        .reset_index(name="activities")
+        .sort_values("activities", ascending=False)
+    )
+    if temp.empty:
+        return {"week": "-", "activities": 0}
+
+    r = temp.iloc[0]
+    return {
+        "week": f"Settimana {int(r['week'])}",
+        "activities": int(r["activities"]),
+        "year": int(r["year"]),
+    }
+
+
+def primary_sport(df: pd.DataFrame) -> dict:
+    if df.empty:
+        return {"sport": "-", "pct": 0.0}
+
+    temp = df.groupby("sport_label")["distance_km"].sum().sort_values(ascending=False)
+    if temp.empty:
+        return {"sport": "-", "pct": 0.0}
+
+    sport = str(temp.index[0])
+    total = float(temp.sum())
+    pct = float((temp.iloc[0] / total) * 100.0) if total > 0 else 0.0
+    return {"sport": sport, "pct": pct}
+
+
+def distance_bucket_distribution(df: pd.DataFrame, mode: str = "count", bucket_col: str = "bucket") -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
-    bins = [-1, 10, 25, 50, 100, 10_000]
+
+    bins = [-0.001, 10, 25, 50, 100, float("inf")]
     labels = ["<10 km", "10-25 km", "25-50 km", "50-100 km", ">100 km"]
-    tmp = df.copy()
-    tmp["bucket"] = pd.cut(tmp["distance_km"], bins=bins, labels=labels)
-    out = tmp.groupby("bucket", observed=False, as_index=False).agg(count=("id", "count"))
-    out["bucket"] = out["bucket"].astype(str)
+
+    temp = df.copy()
+    temp[bucket_col] = pd.cut(temp["distance_km"], bins=bins, labels=labels)
+
+    if mode == "count":
+        out = temp.groupby(bucket_col, observed=False).size().reset_index(name="count")
+    else:
+        out = temp.groupby(bucket_col, observed=False)["distance_km"].sum().reset_index(name="count")
+
     return out
 
 
 def personal_records(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
-    records = []
-    longest = df.nlargest(1, "distance_km").iloc[0]
-    longest_time = df.nlargest(1, "moving_time_h").iloc[0]
-    highest_elev = df.nlargest(1, "elevation_m").iloc[0]
-    top_speed = df.nlargest(1, "avg_speed_kmh").iloc[0]
-    records.extend(
-        [
-            {"record": "Distanza più lunga", "value": f"{longest['distance_km']:.1f} km", "date": longest['start_date_local'].strftime("%d %b %Y")},
-            {"record": "Tempo più lungo", "value": f"{longest_time['moving_time_h']:.1f} h", "date": longest_time['start_date_local'].strftime("%d %b %Y")},
-            {"record": "Dislivello più alto", "value": f"{highest_elev['elevation_m']:.0f} m", "date": highest_elev['start_date_local'].strftime("%d %b %Y")},
-            {"record": "Velocità media più alta", "value": f"{top_speed['avg_speed_kmh']:.1f} km/h", "date": top_speed['start_date_local'].strftime("%d %b %Y")},
-        ]
-    )
-    return pd.DataFrame(records)
+
+    rows = []
+
+    by_distance = df.sort_values("distance_km", ascending=False).head(1)
+    if not by_distance.empty:
+        r = by_distance.iloc[0]
+        rows.append(
+            {
+                "record": "Distanza più lunga",
+                "value": f"{r['distance_km']:.1f} km",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+            }
+        )
+
+    by_time = df.sort_values("moving_time_h", ascending=False).head(1)
+    if not by_time.empty:
+        r = by_time.iloc[0]
+        rows.append(
+            {
+                "record": "Tempo più lungo",
+                "value": f"{r['moving_time_h']:.1f} h",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+            }
+        )
+
+    by_elev = df.sort_values("elevation_m", ascending=False).head(1)
+    if not by_elev.empty:
+        r = by_elev.iloc[0]
+        rows.append(
+            {
+                "record": "Dislivello più alto",
+                "value": f"{r['elevation_m']:.0f} m",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+            }
+        )
+
+    by_speed = df.sort_values("avg_speed_kmh", ascending=False).head(1)
+    if not by_speed.empty:
+        r = by_speed.iloc[0]
+        rows.append(
+            {
+                "record": "Velocità media più alta",
+                "value": f"{r['avg_speed_kmh']:.1f} km/h",
+                "date": pd.to_datetime(r["start_date_local"]).strftime("%d %b %Y"),
+            }
+        )
+
+    return pd.DataFrame(rows)
 
 
 def zone_proxy(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
-    tmp = df.copy()
-    tmp["effort_rank"] = tmp.groupby("sport_label")["effort_score"].rank(pct=True)
-    bins = [0.0, 0.2, 0.5, 0.75, 0.9, 1.0]
-    tmp["zone"] = pd.cut(tmp["effort_rank"], bins=bins, labels=ZONE_LABELS, include_lowest=True)
-    out = tmp.groupby("zone", observed=False, as_index=False).agg(
-        activities=("id", "count"),
-        moving_time_h=("moving_time_h", "sum"),
+
+    temp = df.copy()
+
+    score = temp["effort_score"].fillna(0)
+
+    def zone_name(v: float) -> str:
+        if v < 15:
+            return "Zona 1 (Recupero)"
+        if v < 30:
+            return "Zona 2 (Endurance)"
+        if v < 50:
+            return "Zona 3 (Tempo)"
+        if v < 75:
+            return "Zona 4 (Soglia)"
+        return "Zona 5 (VO2 Max)"
+
+    temp["zone"] = score.map(zone_name)
+
+    out = (
+        temp.groupby("zone", dropna=False)
+        .agg(
+            activities=("id", "count"),
+            moving_time_h=("moving_time_h", "sum"),
+        )
+        .reset_index()
     )
-    out["zone"] = out["zone"].astype(str)
-    total_acts = out["activities"].sum()
+
+    order = [
+        "Zona 1 (Recupero)",
+        "Zona 2 (Endurance)",
+        "Zona 3 (Tempo)",
+        "Zona 4 (Soglia)",
+        "Zona 5 (VO2 Max)",
+    ]
+    out["zone"] = pd.Categorical(out["zone"], categories=order, ordered=True)
+    out = out.sort_values("zone").reset_index(drop=True)
+
+    total_activities = out["activities"].sum()
     total_time = out["moving_time_h"].sum()
-    out["activities_pct"] = np.where(total_acts > 0, out["activities"] / total_acts * 100, 0)
-    out["time_pct"] = np.where(total_time > 0, out["moving_time_h"] / total_time * 100, 0)
+
+    out["activities_pct"] = np.where(
+        total_activities > 0,
+        (out["activities"] / total_activities) * 100.0,
+        0.0,
+    )
+    out["time_pct"] = np.where(
+        total_time > 0,
+        (out["moving_time_h"] / total_time) * 100.0,
+        0.0,
+    )
+
     return out
+
+
+def monthly_best_worst(df: pd.DataFrame, metric: str = "distance_km") -> dict:
+    if df.empty:
+        return {"best_month": "-", "best_value": 0.0, "worst_month": "-", "worst_value": 0.0}
+
+    temp = (
+        df.groupby("month")[metric]
+        .sum()
+        .reset_index()
+        .sort_values(metric, ascending=False)
+    )
+    if temp.empty:
+        return {"best_month": "-", "best_value": 0.0, "worst_month": "-", "worst_value": 0.0}
+
+    best = temp.iloc[0]
+    worst = temp.iloc[-1]
+
+    return {
+        "best_month": str(best["month"]),
+        "best_value": float(best[metric]),
+        "worst_month": str(worst["month"]),
+        "worst_value": float(worst[metric]),
+    }
+
+
+def consistency_score(df: pd.DataFrame) -> float:
+    if df.empty:
+        return 0.0
+
+    temp = (
+        df.dropna(subset=["year", "week"])
+        .groupby(["year", "week"])
+        .size()
+        .reset_index(name="activities")
+    )
+
+    if temp.empty:
+        return 0.0
+
+    active_weeks = (temp["activities"] > 0).sum()
+    total_weeks = temp.shape[0]
+    if total_weeks == 0:
+        return 0.0
+
+    return round((active_weeks / total_weeks) * 100.0, 1)
