@@ -544,3 +544,17 @@ def consistency_score(df: pd.DataFrame) -> float:
         return 0.0
 
     return round((active_weeks / total_weeks) * 100.0, 1)
+
+def available_sports(df: pd.DataFrame) -> list[str]:
+    if df.empty or "sport_label" not in df.columns:
+        return []
+
+    sports = (
+        df["sport_label"]
+        .dropna()
+        .astype(str)
+        .sort_values()
+        .unique()
+        .tolist()
+    )
+    return sports
