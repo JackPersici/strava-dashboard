@@ -976,9 +976,14 @@ with trend_tab:
 
     with a:
         section_open("Trend cumulativo")
-        if not cumulative_metric_df.empty:
+                if not cumulative_metric_df.empty:
             temp = cumulative_metric_df.copy()
             temp["year_str"] = temp["year"].astype(str)
+            temp = temp.sort_values(["year", "month_num"])
+
+            month_order = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+            temp["month_label"] = pd.Categorical(temp["month_label"], categories=month_order, ordered=True)
+
             color_map = {str(y): "#94c5ff" for y in temp["year"].unique()}
             color_map[str(distance_compare["current_year"])] = ACCENT
 
@@ -989,6 +994,7 @@ with trend_tab:
                 color="year_str",
                 markers=True,
                 color_discrete_map=color_map,
+                category_orders={"month_label": month_order},
             )
             fig = plot_style(fig, height=340)
             st.plotly_chart(fig, use_container_width=True)
@@ -998,8 +1004,15 @@ with trend_tab:
 
         section_open("Trend mensile", f"Metrica: {metric_label}")
         if not trend_metric_df.empty:
+            temp_trend = trend_metric_df.copy()
+            temp_trend = temp_trend.sort_values("month_num")
+
+            month_order_full = [
+                f"{m:02d}" for m in range(1, 13)
+            ]
+
             fig = px.line(
-                trend_metric_df,
+                temp_trend,
                 x="month",
                 y=selected_metric,
                 markers=True,
