@@ -143,8 +143,8 @@ with overview_tab:
         else:
             for _, row in bp.iterrows():
                 st.markdown(
-                    f"**{row['value']}**  
-<span class='tiny'>{row['label']} · {row['date']} · {row['sport']}</span>",
+                    f"""**{row['value']}**
+                <span class='tiny'>{row['label']} · {row['date']} · {row['sport']}</span>""",
                     unsafe_allow_html=True,
                 )
                 st.divider()
