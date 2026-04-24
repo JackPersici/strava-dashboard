@@ -231,11 +231,20 @@ def trend_monthly(df: pd.DataFrame, metric: str = "distance_km") -> pd.DataFrame
         return pd.DataFrame()
 
     out = (
-        df.groupby(["month", "month_num"], dropna=False)[metric]
+        df.groupby(["year", "month_num"], dropna=False)[metric]
         .sum()
         .reset_index()
-        .sort_values(["month_num", "month"])
+        .sort_values(["year", "month_num"])
     )
+
+    month_map = {
+        1: "Gen", 2: "Feb", 3: "Mar", 4: "Apr", 5: "Mag", 6: "Giu",
+        7: "Lug", 8: "Ago", 9: "Set", 10: "Ott", 11: "Nov", 12: "Dic",
+    }
+
+    out["month_label"] = out["month_num"].map(month_map)
+    out["month"] = out["month_label"]
+
     return out
 
 
