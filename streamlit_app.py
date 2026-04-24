@@ -1,30 +1,29 @@
 from __future__ import annotations
 
 from datetime import date
-import pandas as pd
 import streamlit as st
 
 from app.config import get_settings, iso_to_unix
 from app.metrics import (
-    available_sports,
-    best_performances,
-    compute_overview_kpis,
-    cumulative_year_vs_previous,
-    distance_bucket_distribution,
-    filter_activities,
-    monthly_distance_by_sport,
     normalize_activities,
-    performance_rankings,
-    personal_records,
-    sport_distribution,
+    filter_activities,
+    kpi_summary,
     summary_by_sport,
-    top_sports_panels,
+    monthly_by_sport,
+    cumulative_by_year,
     trend_monthly,
-    trend_summary_cards,
-    weekday_and_week_stats,
+    compare_vs_previous_year,
+    best_performances,
+    favorite_weekday,
+    most_active_week,
+    primary_sport,
+    distance_bucket_distribution,
+    personal_records,
     zone_proxy,
+    monthly_best_worst,
+    consistency_score,
 )
-from app.projections import project_year_end_by_sport, projection_curve, total_projection
+from app.projections import project_year_end_by_sport
 from app.storage import load_activities, save_activities
 from app.strava_api import StravaClient
 from app.ui import (
