@@ -7,6 +7,7 @@ from app.config import get_settings, iso_to_unix
 from app.metrics import (
     normalize_activities,
     filter_activities,
+    available_sports,
     kpi_summary,
     summary_by_sport,
     monthly_by_sport,
