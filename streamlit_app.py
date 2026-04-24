@@ -250,9 +250,12 @@ with performance_tab:
             st.info("Nessun dato disponibile.")
         else:
             for _, row in rec.iterrows():
-                st.markdown(f"**{row['record']}**  
-<span class='tiny'>{row['value']} · {row['date']}</span>", unsafe_allow_html=True)
-                st.divider()
+                st.markdown(
+                    f"""**{row['record']}**
+            <span class='tiny'>{row['value']} · {row['date']}</span>""",
+                    unsafe_allow_html=True,
+                )
+            st.divider()
         st.markdown("</div>", unsafe_allow_html=True)
 
 with projections_tab:
