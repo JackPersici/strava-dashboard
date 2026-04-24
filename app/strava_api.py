@@ -1,10 +1,9 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any, Dict, List
 import requests
 
 from app.config import Settings
-
 
 AUTH_URL = "https://www.strava.com/oauth/token"
 BASE_URL = "https://www.strava.com/api/v3"
@@ -41,7 +40,7 @@ class StravaClient:
         page = 1
 
         while True:
-            params = {
+            params: Dict[str, Any] = {
                 "after": after_ts,
                 "page": page,
                 "per_page": self.settings.activities_per_page,
@@ -62,10 +61,8 @@ class StravaClient:
                 break
 
             all_items.extend(items)
-
             if len(items) < self.settings.activities_per_page:
                 break
-
             page += 1
 
         return all_items
