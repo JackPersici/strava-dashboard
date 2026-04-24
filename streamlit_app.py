@@ -362,6 +362,73 @@ st.markdown(
         color: {GREEN} !important;
     }}
 
+    /* ---------- FIX LEGGIBILITA WIDGET ---------- */
+
+    [data-testid="stExpander"] details summary,
+    [data-testid="stExpander"] details summary p,
+    [data-testid="stExpander"] details summary span,
+    [data-testid="stExpander"] details summary div {{
+        color: white !important;
+    }}
+
+    .stMultiSelect label,
+    .stSelectbox label,
+    .stDateInput label,
+    .stTextInput label,
+    .stNumberInput label {{
+        color: #e5e7eb !important;
+        font-weight: 600;
+    }}
+
+    .stMultiSelect div[data-baseweb="select"] *,
+    .stSelectbox div[data-baseweb="select"] *,
+    .stDateInput * {{
+        color: white !important;
+    }}
+
+    div[role="listbox"] {{
+        background: #0f1d38 !important;
+        color: white !important;
+        border: 1px solid rgba(148, 163, 184, 0.18) !important;
+    }}
+
+    div[role="option"] {{
+        background: #0f1d38 !important;
+        color: white !important;
+    }}
+
+    div[role="option"]:hover {{
+        background: rgba(255, 122, 26, 0.14) !important;
+        color: white !important;
+    }}
+
+    .stMultiSelect [data-baseweb="tag"] {{
+        background: rgba(255, 122, 26, 0.14) !important;
+        border: 1px solid rgba(255, 122, 26, 0.26) !important;
+        color: white !important;
+    }}
+
+    .stMultiSelect [data-baseweb="tag"] * {{
+        color: white !important;
+    }}
+
+    [data-baseweb="calendar"],
+    [data-baseweb="calendar"] * {{
+        background: #0f1d38 !important;
+        color: white !important;
+    }}
+
+    .stDateInput input {{
+        color: white !important;
+        -webkit-text-fill-color: white !important;
+    }}
+
+    input::placeholder,
+    textarea::placeholder {{
+        color: #94a3b8 !important;
+        opacity: 1 !important;
+    }}
+
     @media (max-width: 768px) {{
         .app-title {{
             font-size: 2.3rem;
@@ -373,82 +440,6 @@ st.markdown(
             font-size: 1rem;
         }}
     }}
-
-    /* ---------- FIX LEGGIBILITA WIDGET ---------- */
-
-    /* expander header */
-    [data-testid="stExpander"] details summary,
-    [data-testid="stExpander"] details summary p,
-    [data-testid="stExpander"] details summary span,
-    [data-testid="stExpander"] details summary div {
-        color: white !important;
-    }
-
-    /* label widget */
-    .stMultiSelect label,
-    .stSelectbox label,
-    .stDateInput label,
-    .stTextInput label,
-    .stNumberInput label {
-        color: #e5e7eb !important;
-        font-weight: 600;
-    }
-
-    /* select / multiselect testo visibile */
-    .stMultiSelect div[data-baseweb="select"] *,
-    .stSelectbox div[data-baseweb="select"] *,
-    .stDateInput * {
-        color: white !important;
-    }
-
-    /* menu aperto dei select/multiselect */
-    div[role="listbox"] {
-        background: #0f1d38 !important;
-        color: white !important;
-        border: 1px solid rgba(148, 163, 184, 0.18) !important;
-    }
-
-    div[role="option"] {
-        background: #0f1d38 !important;
-        color: white !important;
-    }
-
-    div[role="option"]:hover {
-        background: rgba(255, 122, 26, 0.14) !important;
-        color: white !important;
-    }
-
-    /* tag selezionati nel multiselect */
-    .stMultiSelect [data-baseweb="tag"] {
-        background: rgba(255, 122, 26, 0.14) !important;
-        border: 1px solid rgba(255, 122, 26, 0.26) !important;
-        color: white !important;
-    }
-
-    .stMultiSelect [data-baseweb="tag"] * {
-        color: white !important;
-    }
-
-    /* calendario popup */
-    [data-baseweb="calendar"],
-    [data-baseweb="calendar"] * {
-        background: #0f1d38 !important;
-        color: white !important;
-    }
-
-    /* input data */
-    .stDateInput input {
-        color: white !important;
-        -webkit-text-fill-color: white !important;
-    }
-
-    /* placeholder input/select */
-    input::placeholder,
-    textarea::placeholder {
-        color: #94a3b8 !important;
-        opacity: 1 !important;
-    }
-    
     </style>
     """,
     unsafe_allow_html=True,
