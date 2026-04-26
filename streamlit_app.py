@@ -546,6 +546,8 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty or df["year"].dropna().empty:
         return pd.DataFrame()
 
+    group_col = "sport_grouped" if "sport_grouped" in df.columns else "sport_label"
+
     today = date.today()
     current_year = today.year
     current_df = df[df["year"] == current_year].copy()
@@ -558,7 +560,7 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
     total_days = (end_of_year - start_of_year).days + 1
 
     proj = (
-        current_df.groupby("sport_grouped", dropna=False)
+        current_df.groupby(group_col, dropna=False)
         .agg(
             ytd_distance_km=("distance_km", "sum"),
             ytd_time_h=("moving_time_h", "sum"),
@@ -575,7 +577,7 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
 
     prev = (
         df[df["year"] == current_year - 1]
-        .groupby("sport_grouped", dropna=False)
+        .groupby(group_col, dropna=False)
         .agg(
             prev_distance_km=("distance_km", "sum"),
             prev_time_h=("moving_time_h", "sum"),
@@ -585,7 +587,7 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
 
-    proj = proj.merge(prev, on="sport_label", how="left").fillna(0)
+    proj = proj.merge(prev, on=group_col, how="left").fillna(0)
 
     def pct(a: pd.Series, b: pd.Series) -> pd.Series:
         return ((a - b) / b.replace(0, pd.NA) * 100).fillna(0)
@@ -594,6 +596,9 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
     proj["delta_time_pct"] = pct(proj["proj_time_h"], proj["prev_time_h"])
     proj["delta_elevation_pct"] = pct(proj["proj_elevation_m"], proj["prev_elevation_m"])
     proj["delta_activities_pct"] = pct(proj["proj_activities"], proj["prev_activities"])
+
+    # uniformo il nome colonna finale per il resto della dashboard
+    proj = proj.rename(columns={group_col: "sport_label"})
 
     return proj.sort_values("proj_distance_km", ascending=False).reset_index(drop=True)
 
