@@ -796,7 +796,7 @@ with overview_tab:
     with a:
         section_open("Andamento mensile", f"{metric_col_name('distance_km')} aggregata per mese e sport")
         if not monthly_sport_df.empty:
-            color_map = sport_color_map(monthly_sport_df["sport_label"].dropna().unique())
+            color_map = sport_color_map(monthly_sport_df["sport_grouped"].dropna().unique())
             fig = px.bar(
                 monthly_sport_df,
                 x="month",
