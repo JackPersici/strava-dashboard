@@ -617,10 +617,27 @@ def top_sports_panels(sport_df: pd.DataFrame) -> dict:
     if sport_df.empty:
         return {"distance": [], "time": [], "elevation": []}
 
+    group_col = "sport_grouped" if "sport_grouped" in sport_df.columns else "sport_label"
+
     return {
-        "distance": sport_df.sort_values("distance_km", ascending=False)[["sport_label", "distance_km"]].head(3).to_dict("records"),
-        "time": sport_df.sort_values("moving_time_h", ascending=False)[["sport_label", "moving_time_h"]].head(3).to_dict("records"),
-        "elevation": sport_df.sort_values("elevation_m", ascending=False)[["sport_label", "elevation_m"]].head(3).to_dict("records"),
+        "distance": (
+            sport_df.sort_values("distance_km", ascending=False)[[group_col, "distance_km"]]
+            .head(3)
+            .rename(columns={group_col: "sport_label"})
+            .to_dict("records")
+        ),
+        "time": (
+            sport_df.sort_values("moving_time_h", ascending=False)[[group_col, "moving_time_h"]]
+            .head(3)
+            .rename(columns={group_col: "sport_label"})
+            .to_dict("records")
+        ),
+        "elevation": (
+            sport_df.sort_values("elevation_m", ascending=False)[[group_col, "elevation_m"]]
+            .head(3)
+            .rename(columns={group_col: "sport_label"})
+            .to_dict("records")
+        ),
     }
 
 
