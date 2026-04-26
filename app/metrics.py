@@ -234,18 +234,30 @@ def trend_monthly(df: pd.DataFrame, metric: str = "distance_km") -> pd.DataFrame
         df.groupby(["year", "month_num"], dropna=False)[metric]
         .sum()
         .reset_index()
-        .sort_values(["year", "month_num"])
     )
 
+    # garantiamo tutti i mesi 1-12
+    all_months = pd.DataFrame({"month_num": list(range(1, 13))})
+
+    result = []
+    for year in out["year"].unique():
+        temp = out[out["year"] == year]
+        merged = all_months.merge(temp, on="month_num", how="left")
+        merged["year"] = year
+        merged[metric] = merged[metric].fillna(0)
+        result.append(merged)
+
+    out = pd.concat(result)
+
     month_map = {
-        1: "Gen", 2: "Feb", 3: "Mar", 4: "Apr", 5: "Mag", 6: "Giu",
-        7: "Lug", 8: "Ago", 9: "Set", 10: "Ott", 11: "Nov", 12: "Dic",
+        1: "Gen", 2: "Feb", 3: "Mar", 4: "Apr",
+        5: "Mag", 6: "Giu", 7: "Lug", 8: "Ago",
+        9: "Set", 10: "Ott", 11: "Nov", 12: "Dic",
     }
 
-    out["month_label"] = out["month_num"].map(month_map)
-    out["month"] = out["month_label"]
+    out["month"] = out["month_num"].map(month_map)
 
-    return out
+    return out.sort_values(["year", "month_num"])
 
 
 def compare_vs_previous_year(df: pd.DataFrame, metric: str = "distance_km") -> dict:
