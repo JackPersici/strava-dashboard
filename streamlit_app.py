@@ -814,10 +814,10 @@ with overview_tab:
     with b:
         section_open("Distribuzione distanza per sport")
         if not sport_summary_df.empty:
-            color_map = sport_color_map(sport_summary_df["sport_label"].dropna().unique())
+            color_map = sport_color_map(sport_summary_df["sport_grouped"].dropna().unique())
             fig = px.pie(
                 sport_summary_df,
-                names="sport_label",
+                names="sport_grouped",
                 values="distance_km",
                 hole=0.62,
                 color="sport_grouped",
