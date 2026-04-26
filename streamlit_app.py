@@ -483,7 +483,8 @@ def fmt_pct(v: float) -> str:
 
 
 def sport_color_map(labels: Iterable[str]) -> dict[str, str]:
-    return {lab: SPORT_COLORS.get(lab, SPORT_COLORS["Other"]) for lab in labels}
+    fallback = SPORT_COLORS.get("Altri", "#64748b")
+    return {lab: SPORT_COLORS.get(lab, fallback) for lab in labels}
 
 
 def card_html(label: str, value: str, delta: str = "") -> str:
