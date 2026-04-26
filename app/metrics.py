@@ -173,8 +173,10 @@ def summary_by_sport(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
 
+    group_col = "sport_grouped" if "sport_grouped" in df.columns else "sport_label"
+
     out = (
-        df.groupby("sport_label", dropna=False)
+        df.groupby(group_col, dropna=False)
         .agg(
             activities=("id", "count"),
             distance_km=("distance_km", "sum"),
@@ -185,6 +187,8 @@ def summary_by_sport(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
         .sort_values(["distance_km", "moving_time_h"], ascending=False)
     )
+
+    out = out.rename(columns={group_col: "sport_grouped"})
     return out
 
 
