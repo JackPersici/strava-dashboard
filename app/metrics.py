@@ -192,8 +192,10 @@ def monthly_by_sport(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
 
+    group_col = "sport_grouped" if "sport_grouped" in df.columns else "sport_label"
+
     out = (
-        df.groupby(["month", "sport_label"], dropna=False)
+        df.groupby(["month", "month_num", group_col], dropna=False)
         .agg(
             distance_km=("distance_km", "sum"),
             moving_time_h=("moving_time_h", "sum"),
@@ -201,8 +203,11 @@ def monthly_by_sport(df: pd.DataFrame) -> pd.DataFrame:
             activities=("id", "count"),
         )
         .reset_index()
-        .sort_values("month")
+        .sort_values(["month_num", "month"])
     )
+
+    out = out.rename(columns={group_col: "sport_grouped"})
+
     return out
 
 
