@@ -567,3 +567,47 @@ def available_sports(df: pd.DataFrame) -> list[str]:
         .tolist()
     )
     return sports
+
+def group_small_sports(df: pd.DataFrame, threshold_pct: float = 5.0, min_activities: int = 3) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    temp = df.copy()
+
+    total_distance = temp["distance_km"].sum()
+
+    summary = (
+        temp.groupby("sport_label")
+        .agg(
+            distance_km=("distance_km", "sum"),
+            activities=("id", "count"),
+        )
+        .reset_index()
+    )
+
+    summary["pct"] = (summary["distance_km"] / total_distance) * 100
+
+    # top 5 sport per distanza
+    top_sports = (
+        summary.sort_values("distance_km", ascending=False)
+        .head(5)["sport_label"]
+        .tolist()
+    )
+
+    def map_sport(row):
+        if (
+            row["sport_label"] not in top_sports
+            or row["pct"] < threshold_pct
+            or row["activities"] < min_activities
+        ):
+            return "Altri"
+        return row["sport_label"]
+
+    mapping = {
+        row["sport_label"]: map_sport(row)
+        for _, row in summary.iterrows()
+    }
+
+    temp["sport_grouped"] = temp["sport_label"].map(mapping)
+
+    return temp
