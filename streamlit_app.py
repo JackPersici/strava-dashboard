@@ -710,11 +710,12 @@ selected_metric = {
 }[metric_label]
 
 filtered_df = filter_activities(
-    filtered_df = group_small_sports(filtered_df),
     base_df,
     selected_sports=selected_sports if selected_sports else None,
     years=selected_years,
 )
+
+filtered_df = group_small_sports(filtered_df)
 
 if filtered_df.empty:
     st.markdown(
