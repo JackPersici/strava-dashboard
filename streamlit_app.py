@@ -53,9 +53,18 @@ SPORT_COLORS = {
     "Ciclismo": "#ff7a1a",
     "VirtualRide": "#3b82f6",
     "Corsa": "#ff4d4f",
+    "TrailRun": "#a855f7",
     "Escursionismo": "#4ade80",
+    "Camminata": "#22c55e",
     "GravelRide": "#8b5cf6",
+    "Sci alpino": "#60a5fa",
+    "Sci alpinismo": "#38bdf8",
+    "Nuoto": "#fbbf24",
+    "SUP": "#14b8a6",
+    "Surf": "#f59e0b",
+    "Workout": "#10b981",
     "Altri": "#64748b",
+    "Other": "#64748b",
 }
 
 SPORT_ICONS = {
