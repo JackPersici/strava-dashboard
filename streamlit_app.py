@@ -21,6 +21,7 @@ from app.metrics import (
     compare_vs_previous_year,
     best_performances,
     favorite_weekday,
+    group_small_sports,
     most_active_week,
     primary_sport,
     distance_bucket_distribution,
@@ -52,17 +53,18 @@ SPORT_COLORS = {
     "Ciclismo": "#ff7a1a",
     "VirtualRide": "#3b82f6",
     "Corsa": "#ff4d4f",
-    "TrailRun": "#a855f7",
     "Escursionismo": "#4ade80",
-    "Camminata": "#22c55e",
     "GravelRide": "#8b5cf6",
-    "Sci alpino": "#60a5fa",
-    "Sci alpinismo": "#38bdf8",
-    "Nuoto": "#fbbf24",
-    "SUP": "#14b8a6",
-    "Surf": "#f59e0b",
-    "Workout": "#10b981",
-    "Other": "#94a3b8",
+    "Altri": "#64748b",
+}
+
+SPORT_ICONS = {
+    "Ciclismo": "🚴",
+    "VirtualRide": "💻",
+    "Corsa": "👟",
+    "Escursionismo": "🥾",
+    "GravelRide": "🪨",
+    "Altri": "✨",
 }
 
 BG = "#07111f"
@@ -556,7 +558,7 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
     total_days = (end_of_year - start_of_year).days + 1
 
     proj = (
-        current_df.groupby("sport_label", dropna=False)
+        current_df.groupby("sport_grouped", dropna=False)
         .agg(
             ytd_distance_km=("distance_km", "sum"),
             ytd_time_h=("moving_time_h", "sum"),
@@ -573,7 +575,7 @@ def current_year_projection(df: pd.DataFrame) -> pd.DataFrame:
 
     prev = (
         df[df["year"] == current_year - 1]
-        .groupby("sport_label", dropna=False)
+        .groupby("sport_grouped", dropna=False)
         .agg(
             prev_distance_km=("distance_km", "sum"),
             prev_time_h=("moving_time_h", "sum"),
@@ -708,6 +710,7 @@ selected_metric = {
 }[metric_label]
 
 filtered_df = filter_activities(
+    filtered_df = group_small_sports(filtered_df),
     base_df,
     selected_sports=selected_sports if selected_sports else None,
     years=selected_years,
@@ -782,7 +785,7 @@ with overview_tab:
                 monthly_sport_df,
                 x="month",
                 y="distance_km",
-                color="sport_label",
+                color="sport_grouped",
                 barmode="stack",
                 color_discrete_map=color_map,
             )
@@ -801,7 +804,7 @@ with overview_tab:
                 names="sport_label",
                 values="distance_km",
                 hole=0.62,
-                color="sport_label",
+                color="sport_grouped",
                 color_discrete_map=color_map,
             )
             fig = plot_style(fig, height=355)
@@ -860,7 +863,7 @@ with overview_tab:
                     f"""
                     <div class="insight-row">
                         <div class="insight-main">{row['value']}</div>
-                        <div class="insight-sub">{row['label']} · {row['date']} · {row['sport']}</div>
+                        <div class="insight-sub">{row['label']} · {row['date']} · f"{SPORT_ICONS.get(row['sport'], '•')} {row['sport']}"</div>
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -929,7 +932,7 @@ with per_sport_tab:
                 x="distance_km",
                 y="sport_label",
                 orientation="h",
-                color="sport_label",
+                color="sport_grouped",
                 color_discrete_map=color_map,
             )
             fig = plot_style(fig, height=355, show_legend=False)
@@ -1184,7 +1187,7 @@ with projections_tab:
                 proj,
                 x="sport_label",
                 y="proj_distance_km",
-                color="sport_label",
+                color="sport_grouped",
                 color_discrete_map=color_map,
             )
             fig = plot_style(fig, height=320, show_legend=False)
