@@ -6,7 +6,60 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from app.formatters import fmt_h, fmt_km, fmt_m, fmt_pct
-from app.theme import ACCENT, GREEN, TEXT, mini_stat_html, plot_style, section_close, section_open
+
+
+ACCENT = "#ff7a1a"
+GREEN = "#22c55e"
+TEXT = "#f8fafc"
+PANEL = "#0b1830"
+MUTED = "#94a3b8"
+
+
+def section_open(title: str, note: str | None = None) -> None:
+    st.markdown(
+        f'''
+        <div class="panel">
+            <div class="panel-title">{title}</div>
+            {f'<div class="panel-note">{note}</div>' if note else ""}
+        ''',
+        unsafe_allow_html=True,
+    )
+
+
+def section_close() -> None:
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def mini_stat_html(label: str, value: str, sub: str = "") -> str:
+    return f'''
+    <div class="mini-stat">
+        <div class="mini-label">{label}</div>
+        <div class="mini-value">{value}</div>
+        <div class="mini-sub">{sub}</div>
+    </div>
+    '''
+
+
+def plot_style(fig: go.Figure, height: int = 320, show_legend: bool = True) -> go.Figure:
+    fig.update_layout(
+        height=height,
+        margin=dict(l=10, r=10, t=12, b=10),
+        paper_bgcolor=PANEL,
+        plot_bgcolor=PANEL,
+        font=dict(color=TEXT),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            x=0,
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(color=TEXT),
+        ),
+        showlegend=show_legend,
+    )
+    fig.update_xaxes(showgrid=False, color="#cbd5e1")
+    fig.update_yaxes(gridcolor="rgba(148,163,184,0.15)", color="#cbd5e1")
+    return fig
 
 
 def _cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int):
