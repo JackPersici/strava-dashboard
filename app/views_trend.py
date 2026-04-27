@@ -1,14 +1,104 @@
 from __future__ import annotations
 
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
-from app.charts import (
-    cumulative_trend_chart,
-    monthly_trend_chart,
-    progress_gauge_chart,
-)
-from app.formatters import fmt_km, fmt_h, fmt_m, fmt_pct
-from app.theme import section_open, section_close, mini_stat_html
+from app.formatters import fmt_h, fmt_km, fmt_m, fmt_pct
+from app.theme import ACCENT, GREEN, TEXT, mini_stat_html, plot_style, section_close, section_open
+
+
+def _cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int):
+    temp = cumulative_metric_df.copy()
+    if temp.empty:
+        return go.Figure()
+
+    if "year_str" not in temp.columns:
+        temp["year_str"] = temp["year"].astype(str)
+
+    if "month_num" in temp.columns:
+        temp = temp.sort_values(["year", "month_num"])
+
+    month_order = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+    if "month_label" in temp.columns:
+        temp["month_label"] = pd.Categorical(temp["month_label"], categories=month_order, ordered=True)
+
+    color_map = {str(y): "#94c5ff" for y in temp["year"].dropna().unique()}
+    color_map[str(current_year)] = ACCENT
+
+    fig = px.line(
+        temp,
+        x="month_label",
+        y="cumulative",
+        color="year_str",
+        markers=True,
+        category_orders={"month_label": month_order},
+        color_discrete_map=color_map,
+    )
+    return plot_style(fig, height=340)
+
+
+def _monthly_trend_chart(trend_metric_df: pd.DataFrame, selected_metric: str, current_year: int):
+    temp = trend_metric_df.copy()
+    if temp.empty:
+        return go.Figure()
+
+    if "month_num" in temp.columns:
+        temp = temp.sort_values(["year", "month_num"])
+
+    month_order = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+    if "month" in temp.columns:
+        temp["month"] = pd.Categorical(temp["month"], categories=month_order, ordered=True)
+
+    if "year" in temp.columns and temp["year"].nunique() > 1:
+        temp["year_str"] = temp["year"].astype(str)
+        color_map = {str(y): "#94c5ff" for y in temp["year"].dropna().unique()}
+        color_map[str(current_year)] = ACCENT
+
+        fig = px.line(
+            temp,
+            x="month",
+            y=selected_metric,
+            color="year_str",
+            markers=True,
+            line_shape="linear",
+            category_orders={"month": month_order},
+            color_discrete_map=color_map,
+        )
+    else:
+        fig = px.line(
+            temp,
+            x="month",
+            y=selected_metric,
+            markers=True,
+            line_shape="linear",
+            category_orders={"month": month_order},
+        )
+        fig.update_traces(line=dict(color=ACCENT, width=3))
+
+    return plot_style(fig, height=340)
+
+
+def _progress_gauge_chart(progress: float):
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=progress,
+            number={"suffix": "%", "font": {"size": 42}},
+            gauge={
+                "axis": {"range": [0, 100], "tickcolor": TEXT},
+                "bar": {"color": GREEN},
+                "bgcolor": "#16233f",
+                "borderwidth": 0,
+                "steps": [
+                    {"range": [0, 50], "color": "#1b2b4c"},
+                    {"range": [50, 100], "color": "#233559"},
+                ],
+            },
+        )
+    )
+    return plot_style(fig, height=265, show_legend=False)
 
 
 def render_trend(prepared: dict, metric_label: str, selected_metric: str) -> None:
@@ -30,7 +120,7 @@ def render_trend(prepared: dict, metric_label: str, selected_metric: str) -> Non
 
         if not cumulative_metric_df.empty:
             st.plotly_chart(
-                cumulative_trend_chart(
+                _cumulative_trend_chart(
                     cumulative_metric_df,
                     distance_compare["current_year"],
                 ),
@@ -46,7 +136,7 @@ def render_trend(prepared: dict, metric_label: str, selected_metric: str) -> Non
 
         if not trend_metric_df.empty:
             st.plotly_chart(
-                monthly_trend_chart(
+                _monthly_trend_chart(
                     trend_metric_df,
                     selected_metric,
                     distance_compare["current_year"],
@@ -72,7 +162,7 @@ def render_trend(prepared: dict, metric_label: str, selected_metric: str) -> Non
         progress = min(100.0, (kpis["distance_km"] / target_value) * 100.0)
 
         st.plotly_chart(
-            progress_gauge_chart(progress),
+            _progress_gauge_chart(progress),
             use_container_width=True,
             key="trend_progress_gauge",
         )
