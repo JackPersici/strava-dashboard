@@ -960,14 +960,14 @@ with per_sport_tab:
         section_open("Confronto distanza per sport")
         if not sport_summary_df.empty:
             color_map = sport_color_map(sport_summary_df["sport_grouped"].dropna().unique())
-                fig = px.bar(
-                    sport_summary_df.sort_values("distance_km", ascending=True),
-                    x="distance_km",
-                    y="sport_grouped",
-                    orientation="h",
-                    color="sport_grouped",
-                    color_discrete_map=color_map,
-                )
+            fig = px.bar(
+                sport_summary_df.sort_values("distance_km", ascending=True),
+                x="distance_km",
+                y="sport_grouped",
+                orientation="h",
+                color="sport_grouped",
+                color_discrete_map=color_map,
+            )
             fig = plot_style(fig, height=355, show_legend=False)
             st.plotly_chart(fig, use_container_width=True)
         else:
