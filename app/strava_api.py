@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 import requests
 
 from app.config import Settings
+
 
 AUTH_URL = "https://www.strava.com/oauth/token"
 BASE_URL = "https://www.strava.com/api/v3"
@@ -30,22 +31,22 @@ class StravaClient:
         self.access_token = data["access_token"]
         return self.access_token
 
-    def _headers(self) -> Dict[str, str]:
+    def _headers(self) -> dict[str, str]:
         if not self.access_token:
             self.refresh_access_token()
         return {"Authorization": f"Bearer {self.access_token}"}
 
-    def list_activities(self, after_ts: int, before_ts: int | None = None) -> List[Dict[str, Any]]:
-        all_items: List[Dict[str, Any]] = []
+    def list_activities(self, after_ts: int, before_ts: int | None = None) -> list[dict[str, Any]]:
+        all_items: list[dict[str, Any]] = []
         page = 1
 
         while True:
-            params: Dict[str, Any] = {
+            params: dict[str, Any] = {
                 "after": after_ts,
                 "page": page,
                 "per_page": self.settings.activities_per_page,
             }
-            if before_ts:
+            if before_ts is not None:
                 params["before"] = before_ts
 
             response = requests.get(

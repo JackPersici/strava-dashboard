@@ -12,7 +12,7 @@ class Settings:
     refresh_token: str
     scope: str
     activities_per_page: int = 100
-    cache_file: str = "data/activities.parquet"
+    cache_file: str = "data/activities_modular.parquet"
     default_start_date: str = "2025-01-01"
 
 
