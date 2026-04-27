@@ -940,7 +940,7 @@ with per_sport_tab:
         section_open("Riepilogo per sport")
         show = sport_summary_df.rename(
             columns={
-                "sport_label": "Sport",
+                "sport_grouped": "Sport",
                 "activities": "Attività",
                 "distance_km": "Distanza (km)",
                 "moving_time_h": "Tempo (h)",
@@ -959,15 +959,15 @@ with per_sport_tab:
 
         section_open("Confronto distanza per sport")
         if not sport_summary_df.empty:
-            color_map = sport_color_map(sport_summary_df["sport_label"].dropna().unique())
-            fig = px.bar(
-                sport_summary_df.sort_values("distance_km", ascending=True),
-                x="distance_km",
-                y="sport_label",
-                orientation="h",
-                color="sport_grouped",
-                color_discrete_map=color_map,
-            )
+            color_map = sport_color_map(sport_summary_df["sport_grouped"].dropna().unique())
+                fig = px.bar(
+                    sport_summary_df.sort_values("distance_km", ascending=True),
+                    x="distance_km",
+                    y="sport_grouped",
+                    orientation="h",
+                    color="sport_grouped",
+                    color_discrete_map=color_map,
+                )
             fig = plot_style(fig, height=355, show_legend=False)
             st.plotly_chart(fig, use_container_width=True)
         else:
