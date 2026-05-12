@@ -22,7 +22,11 @@ def render_overview(data: dict) -> None:
     main_sport = data["primary_sport"]
     consistency = data["consistency"]
 
+    # =====================================================
+    # TOP KPI
+    # =====================================================
     c1, c2, c3, c4 = st.columns(4)
+
     with c1:
         st.markdown(card_html("Attività", fmt_int(kpis["activities"]), f"{fmt_pct(distance_compare['delta_pct'])} vs anno scorso"), unsafe_allow_html=True)
     with c2:
@@ -32,9 +36,15 @@ def render_overview(data: dict) -> None:
     with c4:
         st.markdown(card_html("Dislivello", fmt_m(kpis["elevation_m"]), f"{fmt_pct(elev_compare['delta_pct'])} vs anno scorso"), unsafe_allow_html=True)
 
-    a, b, c = st.columns([1.9, 1.15, 0.95])
+    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 
-    with a:
+    # =====================================================
+    # MAIN GRID
+    # =====================================================
+    left, right = st.columns([2.2, 1.1])
+
+    # LEFT SIDE
+    with left:
         section_open("Andamento mensile", "Distanza aggregata per mese e sport")
         if monthly_sport_df.empty:
             st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
@@ -42,40 +52,49 @@ def render_overview(data: dict) -> None:
             st.plotly_chart(monthly_distance_chart(monthly_sport_df), use_container_width=True)
         section_close()
 
-    with b:
-        section_open("Distribuzione distanza per sport")
+        section_open("Trend vs anno scorso", "Confronto cumulativo")
+        if cumulative_metric_df.empty:
+            st.markdown("<div class='big-empty'>Nessun confronto disponibile.</div>", unsafe_allow_html=True)
+        else:
+            st.plotly_chart(
+                cumulative_trend_chart(cumulative_metric_df, distance_compare["current_year"]),
+                use_container_width=True,
+            )
+            st.markdown(
+                f"<span class='pill'>Sei a {fmt_pct(distance_compare['delta_pct'])} rispetto al {distance_compare['previous_year']}</span>",
+                unsafe_allow_html=True,
+            )
+        section_close()
+
+    # RIGHT SIDE
+    with right:
+        section_open("Distribuzione sport")
         if sport_summary_df.empty:
             st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
             st.plotly_chart(sport_donut_chart(sport_summary_df), use_container_width=True)
         section_close()
 
-    with c:
-        section_open("I tuoi numeri chiave")
-        st.markdown(mini_stat_html("Attività", fmt_int(kpis["activities"]), "totale periodo selezionato"), unsafe_allow_html=True)
-        st.markdown(mini_stat_html("Media distanza", fmt_km(kpis["avg_distance_km"]), "per attività"), unsafe_allow_html=True)
-        st.markdown(mini_stat_html("Media tempo", fmt_h(kpis["avg_time_h"]), "per attività"), unsafe_allow_html=True)
-        st.markdown(mini_stat_html("Media dislivello", fmt_m(kpis["avg_elevation_m"]), "per attività"), unsafe_allow_html=True)
-        st.markdown(mini_stat_html("Indice di costanza", f"{consistency:.0f}/100", "presenza settimanale"), unsafe_allow_html=True)
+        section_open("Insights")
+        st.markdown(mini_stat_html("Sport principale", main_sport["sport"], f"{main_sport['pct']:.0f}% distanza"), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Giorno preferito", fav_day["weekday"], f"{fav_day['pct']:.0f}% attività"), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Settimana top", active_week.get("week", "-"), f"{active_week.get('activities', 0)} attività"), unsafe_allow_html=True)
+        st.markdown(mini_stat_html("Costanza", f"{consistency:.0f}/100", "presenza settimanale"), unsafe_allow_html=True)
         section_close()
 
-    d, e, f = st.columns([1.4, 1.05, 1.0])
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    with d:
-        section_open("Trend vs anno scorso", "Confronto cumulativo")
-        if cumulative_metric_df.empty:
-            st.markdown("<div class='big-empty'>Nessun confronto disponibile.</div>", unsafe_allow_html=True)
-        else:
-            st.plotly_chart(cumulative_trend_chart(cumulative_metric_df, distance_compare["current_year"]), use_container_width=True)
-            st.markdown(f"<span class='pill'>Sei a {fmt_pct(distance_compare['delta_pct'])} rispetto al {distance_compare['previous_year']}</span>", unsafe_allow_html=True)
-        section_close()
+    # =====================================================
+    # BOTTOM GRID
+    # =====================================================
+    b1, b2 = st.columns([1.4, 1.0])
 
-    with e:
+    with b1:
         section_open("Migliori performance")
         if bp.empty:
             st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
-            for _, row in bp.iterrows():
+            for _, row in bp.head(4).iterrows():
                 st.markdown(
                     f"""
                     <div class="insight-row">
@@ -87,8 +106,8 @@ def render_overview(data: dict) -> None:
                 )
         section_close()
 
-    with f:
-        section_open("Zone di frequenza", "Distribuzione attività")
+    with b2:
+        section_open("Zone di frequenza")
         if zones.empty:
             st.markdown("<div class='big-empty'>Nessun dato disponibile.</div>", unsafe_allow_html=True)
         else:
