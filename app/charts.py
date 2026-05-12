@@ -156,9 +156,12 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     fig.update_layout(
         bargap=0.38,
         showlegend=False,
-        margin=dict(l=4, r=4, t=0, b=2),
     )
-    return plot_style(fig, height=258, show_legend=False)
+    fig = plot_style(fig, height=276, show_legend=False)
+    fig.update_layout(margin=dict(l=44, r=10, t=2, b=42))
+    fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
+    fig.update_xaxes(automargin=True)
+    return fig
 
 
 def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:

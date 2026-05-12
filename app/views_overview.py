@@ -50,20 +50,23 @@ def _sport_legend_html(df) -> str:
     return f"<div class='sd-chart-legend horizontal'>{items}</div>"
 
 
-def _render_scrollable_plotly(fig, min_width: int = 820, height: int = 300) -> None:
-    """Render a Plotly chart inside a simple horizontal scrollbar container."""
+def _render_scrollable_plotly(fig, min_width: int = 820, height: int = 334) -> None:
+    """Render a Plotly chart inside a card with a simple horizontal scrollbar."""
+    chart_height = max(240, height - 44)
     html = fig.to_html(
         include_plotlyjs="cdn",
         full_html=False,
         config={"displayModeBar": False, "responsive": True},
         default_width="100%",
-        default_height=f"{height - 22}px",
+        default_height=f"{chart_height}px",
     )
     components.html(
         f"""
-        <div style="width:100%; height:{height}px; overflow-x:auto; overflow-y:hidden; padding-bottom:8px; box-sizing:border-box;">
-            <div style="min-width:{min_width}px; height:{height - 22}px;">
-                {html}
+        <div style="width:100%; height:{height}px; background:rgba(12,23,38,0.58); border:1px solid rgba(216,230,255,0.04); border-radius:15px; padding:10px 12px 8px 12px; box-sizing:border-box; overflow:hidden;">
+            <div style="width:100%; height:{height - 18}px; overflow-x:auto; overflow-y:hidden; padding-bottom:10px; box-sizing:border-box; scrollbar-width:thin; scrollbar-color:rgba(226,232,240,0.82) rgba(255,255,255,0.10);">
+                <div style="min-width:{min_width}px; height:{chart_height}px;">
+                    {html}
+                </div>
             </div>
         </div>
         """,
@@ -130,7 +133,7 @@ def render_overview(data: dict) -> None:
             st.markdown(_sport_legend_html(monthly_sport_df), unsafe_allow_html=True)
             fig = monthly_distance_chart(monthly_sport_df)
             month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
-            _render_scrollable_plotly(fig, min_width=max(780, month_count * 58), height=294)
+            _render_scrollable_plotly(fig, min_width=max(820, month_count * 58), height=334)
 
         st.markdown(section_header_html("Trend vs anno scorso", "Confronto cumulativo progressivo"), unsafe_allow_html=True)
         if cumulative_metric_df.empty:
