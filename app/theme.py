@@ -8,20 +8,20 @@ import streamlit as st
 # =========================================================
 
 COLORS = {
-    "bg": "#050A12",
-    "bg_alt": "#07111E",
-    "surface": "#091525",
-    "panel": "#0D192A",
-    "panel_2": "#111F33",
-    "panel_3": "#16263D",
-    "border": "rgba(255,255,255,0.075)",
-    "border_soft": "rgba(255,255,255,0.045)",
+    "bg": "#040912",
+    "bg_alt": "#06101B",
+    "surface": "#0A1422",
+    "panel": "#0E1827",
+    "panel_2": "#121D2E",
+    "panel_3": "#18263A",
+    "border": "rgba(216,230,255,0.070)",
+    "border_soft": "rgba(216,230,255,0.040)",
     "text": "#F7FAFF",
     "text_soft": "#DCE7F5",
-    "muted": "#8CA0B8",
-    "muted_2": "#64748B",
-    "accent": "#FC4C02",
-    "accent_2": "#FF8A3D",
+    "muted": "#93A7BD",
+    "muted_2": "#6B7D91",
+    "accent": "#F05A22",
+    "accent_2": "#FF9A5C",
     "blue": "#7DB7FF",
     "green": "#22C55E",
     "red": "#EF4444",
@@ -79,9 +79,9 @@ def inject_global_css() -> None:
         }}
 
         .block-container {{
-            max-width: 1160px;
-            padding-top: 0.55rem;
-            padding-bottom: 2.0rem;
+            max-width: 1120px;
+            padding-top: 0.35rem;
+            padding-bottom: 1.65rem;
         }}
 
         header[data-testid="stHeader"] {{ background: transparent !important; }}
@@ -92,8 +92,8 @@ def inject_global_css() -> None:
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }}
 
-        div[data-testid="stVerticalBlock"] {{ gap: 0.52rem; }}
-        div[data-testid="stHorizontalBlock"] {{ gap: 0.76rem; }}
+        div[data-testid="stVerticalBlock"] {{ gap: 0.42rem; }}
+        div[data-testid="stHorizontalBlock"] {{ gap: 0.66rem; }}
 
         /* Remove the default white/gray Streamlit feel */
         section[data-testid="stSidebar"] {{ background: {COLORS['bg']} !important; }}
@@ -127,10 +127,10 @@ def inject_global_css() -> None:
         div[data-baseweb="tab-list"] {{ gap: 4px; }}
         button[data-baseweb="tab"] {{
             color: {COLORS['muted']} !important;
-            padding: 8px 10px 10px !important;
+            padding: 7px 10px 9px !important;
             border-radius: 0 !important;
-            font-weight: 760 !important;
-            font-size: 0.82rem !important;
+            font-weight: 680 !important;
+            font-size: 0.78rem !important;
             border-bottom: 2px solid transparent !important;
         }}
         button[data-baseweb="tab"]:hover {{
@@ -148,7 +148,7 @@ def inject_global_css() -> None:
         div[data-testid="stMetric"] {{
             background: rgba(13,25,42,0.88);
             border: 1px solid {COLORS['border']};
-            border-radius: {RADIUS['lg']};
+            border-radius: 15px;
             padding: 10px 12px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.16);
         }}
@@ -162,14 +162,14 @@ def inject_global_css() -> None:
             align-items: center;
             justify-content: space-between;
             gap: 14px;
-            padding: 14px 18px;
-            margin: 0 0 10px;
-            border-radius: {RADIUS['xl']};
+            padding: 12px 16px;
+            margin: 0 0 6px;
+            border-radius: 18px;
             border: 1px solid {COLORS['border']};
             background:
-                radial-gradient(circle at 7% 4%, rgba(252,76,2,0.16), transparent 13rem),
-                linear-gradient(135deg, rgba(17,31,51,0.88), rgba(8,17,31,0.96));
-            box-shadow: 0 16px 45px rgba(0,0,0,0.24);
+                radial-gradient(circle at 6% 0%, rgba(240,90,34,0.115), transparent 12rem),
+                linear-gradient(135deg, rgba(15,26,42,0.92), rgba(7,16,28,0.98));
+            box-shadow: 0 10px 28px rgba(0,0,0,0.18);
             overflow: hidden;
         }}
         .sd-hero::after, .sd-app-header::after {{
@@ -185,17 +185,17 @@ def inject_global_css() -> None:
         .sd-hero-eyebrow, .sd-eyebrow {{
             color: {COLORS['accent_2']};
             font-size: .63rem;
-            font-weight: 900;
+            font-weight: 820;
             letter-spacing: .18em;
             text-transform: uppercase;
             margin-bottom: 6px;
         }}
         .sd-hero-title, .sd-app-title, .sd-page-title {{
             color: {COLORS['text']};
-            font-size: clamp(1.3rem, 2.4vw, 2rem);
+            font-size: clamp(1.18rem, 2.0vw, 1.72rem);
             line-height: 1.02;
-            font-weight: 920;
-            letter-spacing: -0.06em;
+            font-weight: 840;
+            letter-spacing: -0.045em;
             margin: 0;
         }}
         .sd-hero-subtitle, .sd-app-subtitle {{ color: {COLORS['muted']}; font-size: .82rem; margin-top: 6px; }}
@@ -206,17 +206,17 @@ def inject_global_css() -> None:
             justify-content: space-between;
             align-items: flex-end;
             gap: 16px;
-            margin: 2px 0 8px;
+            margin: 0 0 6px;
         }}
         .sd-page-kicker {{
             color: {COLORS['accent_2']};
             font-size: .63rem;
-            font-weight: 900;
+            font-weight: 820;
             letter-spacing: .18em;
             text-transform: uppercase;
             margin-bottom: 4px;
         }}
-        .sd-page-subtitle {{ color: {COLORS['muted']}; font-size: .82rem; margin-top: 4px; }}
+        .sd-page-subtitle {{ color: {COLORS['muted']}; font-size: .76rem; margin-top: 4px; }}
         .sd-topline-actions {{ display: flex; gap: 7px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }}
 
         .sd-pill, .pill {{
@@ -226,7 +226,7 @@ def inject_global_css() -> None:
             padding: 4px 8px;
             border-radius: 999px;
             font-size: .68rem;
-            font-weight: 850;
+            font-weight: 740;
             border: 1px solid rgba(252,76,2,0.30);
             background: rgba(252,76,2,0.10);
             color: #FFB084;
@@ -243,14 +243,13 @@ def inject_global_css() -> None:
         .kpi-card {{
             position: relative;
             overflow: hidden;
-            min-height: 78px;
-            padding: 11px 12px 10px;
-            border-radius: {RADIUS['lg']};
+            min-height: 66px;
+            padding: 9px 11px 9px;
+            border-radius: 15px;
             border: 1px solid {COLORS['border']};
             background:
-                radial-gradient(circle at 88% 10%, rgba(252,76,2,0.095), transparent 6rem),
-                linear-gradient(145deg, rgba(17,31,51,0.88), rgba(8,17,31,0.96));
-            box-shadow: 0 13px 34px rgba(0,0,0,0.18);
+                linear-gradient(145deg, rgba(16,28,45,0.82), rgba(8,17,31,0.96));
+            box-shadow: 0 8px 22px rgba(0,0,0,0.12);
         }}
         .kpi-card::after {{
             content: "";
@@ -259,24 +258,24 @@ def inject_global_css() -> None:
             height: 2px;
             border-radius: 999px 999px 0 0;
             background: linear-gradient(90deg, {COLORS['accent']}, rgba(252,76,2,0));
-            opacity: .70;
+            opacity: .54;
         }}
         .kpi-label {{
             color: {COLORS['muted']};
-            font-size: .61rem;
+            font-size: .58rem;
             text-transform: uppercase;
             letter-spacing: .14em;
-            font-weight: 850;
+            font-weight: 740;
         }}
         .kpi-value {{
             color: {COLORS['text']};
-            font-size: clamp(1.16rem, 1.65vw, 1.55rem);
-            font-weight: 900;
+            font-size: clamp(1.05rem, 1.45vw, 1.36rem);
+            font-weight: 820;
             letter-spacing: -0.055em;
-            margin-top: 7px;
+            margin-top: 5px;
             line-height: 1.02;
         }}
-        .kpi-delta {{ margin-top: 6px; color: {COLORS['muted']}; font-size: .68rem; font-weight: 780; }}
+        .kpi-delta {{ margin-top: 5px; color: {COLORS['muted']}; font-size: .63rem; font-weight: 720; }}
         .kpi-delta.positive {{ color: #86EFAC; }}
         .kpi-delta.negative {{ color: #FDA4AF; }}
 
@@ -285,66 +284,66 @@ def inject_global_css() -> None:
             align-items: flex-end;
             justify-content: space-between;
             gap: 10px;
-            margin: 0 0 8px;
+            margin: 0 0 6px;
         }}
         .sd-section-title h3 {{
             color: {COLORS['text']};
-            font-size: .94rem;
-            font-weight: 850;
+            font-size: .86rem;
+            font-weight: 740;
             letter-spacing: -0.025em;
             margin: 0;
         }}
         .sd-section-title p {{ color: {COLORS['muted']}; font-size: .73rem; margin: 3px 0 0; }}
 
         .sd-card, .card {{
-            background: rgba(13,25,42,0.78);
+            background: rgba(12,23,38,0.64);
             border: 1px solid {COLORS['border']};
-            border-radius: {RADIUS['lg']};
-            padding: 11px;
-            box-shadow: 0 14px 34px rgba(0,0,0,0.16);
+            border-radius: 15px;
+            padding: 10px;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.10);
         }}
-        .sd-chart-card {{ padding: 10px 11px 6px; }}
+        .sd-chart-card {{ padding: 9px 10px 5px; }}
         .sd-card.flat {{ background: rgba(9,21,37,0.70); box-shadow: none; }}
 
         /* Streamlit plot containers get a card feel even if HTML wrappers are not respected */
         div[data-testid="stPlotlyChart"] {{
-            background: rgba(13,25,42,0.74);
+            background: rgba(12,23,38,0.58);
             border: 1px solid {COLORS['border_soft']};
-            border-radius: {RADIUS['lg']};
-            padding: 8px 8px 2px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.14);
+            border-radius: 15px;
+            padding: 7px 7px 1px;
+            box-shadow: 0 7px 18px rgba(0,0,0,0.10);
         }}
         .sd-card div[data-testid="stPlotlyChart"] {{ background: transparent; border: 0; box-shadow: none; padding: 0; }}
 
         .mini-stat, .insight-row {{
-            background: rgba(9,21,37,0.72);
+            background: rgba(9,19,32,0.54);
             border: 1px solid {COLORS['border_soft']};
             border-radius: 13px;
-            padding: 9px 10px;
-            margin-bottom: 7px;
+            padding: 8px 9px;
+            margin-bottom: 6px;
         }}
         .mini-label, .insight-kicker {{
             color: {COLORS['muted']};
-            font-size: .59rem;
+            font-size: .56rem;
             letter-spacing: .13em;
             text-transform: uppercase;
-            font-weight: 850;
+            font-weight: 740;
         }}
         .mini-value, .insight-main {{
             color: {COLORS['text']};
-            font-size: .94rem;
-            font-weight: 850;
+            font-size: .86rem;
+            font-weight: 740;
             line-height: 1.12;
             margin-top: 4px;
         }}
-        .mini-sub, .insight-sub, .tiny {{ color: {COLORS['muted']}; font-size: .70rem; margin-top: 3px; }}
+        .mini-sub, .insight-sub, .tiny {{ color: {COLORS['muted']}; font-size: .66rem; margin-top: 3px; }}
         .insight-row {{
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
             column-gap: 10px;
         }}
-        .insight-value {{ color: {COLORS['text']}; font-size: .92rem; font-weight: 850; text-align: right; }}
+        .insight-value {{ color: {COLORS['text']}; font-size: .92rem; font-weight: 740; text-align: right; }}
 
         .big-empty {{
             padding: 22px 12px;
@@ -359,8 +358,22 @@ def inject_global_css() -> None:
         .table-wrap {{ overflow: auto; border: 1px solid {COLORS['border_soft']}; border-radius: 14px; }}
         .data-table {{ width: 100%; border-collapse: collapse; color: {COLORS['text_soft']}; font-size: .78rem; }}
         .data-table th {{ color: {COLORS['muted']}; text-transform: uppercase; letter-spacing: .08em; font-size: .63rem; background: rgba(255,255,255,0.035); }}
-        .data-table th, .data-table td {{ padding: 9px 10px; border-bottom: 1px solid {COLORS['border_soft']}; }}
+        .data-table th, .data-table td {{ padding: 8px 9px; border-bottom: 1px solid {COLORS['border_soft']}; }}
         .data-table tr:last-child td {{ border-bottom: 0; }}
+
+
+
+        /* Step 4 premium polish overrides */
+        .sd-page-title { font-size: clamp(1.28rem, 2.0vw, 1.62rem); font-weight: 780; letter-spacing: -0.04em; }
+        .sd-page-kicker, .sd-hero-eyebrow, .sd-eyebrow { font-weight: 760; letter-spacing: .17em; }
+        .sd-section-title h3 { font-size: .84rem; font-weight: 720; letter-spacing: -0.018em; }
+        .sd-section-title p { font-size: .70rem; opacity: .92; }
+        .kpi-card { min-height: 64px; }
+        .kpi-value { text-shadow: none; }
+        .sd-pill { padding: 3px 8px; font-weight: 720; }
+        .mini-value, .insight-main, .insight-value { font-weight: 760; }
+        .mini-stat, .insight-row { box-shadow: none; }
+        div[data-testid="stPlotlyChart"] svg { overflow: visible; }
 
         @media (max-width: 768px) {{
             .block-container {{ padding-left: 0.70rem; padding-right: 0.70rem; padding-top: .4rem; }}
@@ -484,10 +497,10 @@ def section_close() -> None:
 
 def sport_color_map(sports=None):
     base = {
-        "Ciclismo": "#FC4C02",
-        "Ride": "#FC4C02",
-        "VirtualRide": "#8B5CF6",
-        "GravelRide": "#F0A96A",
+        "Ciclismo": "#E56A35",
+        "Ride": "#E56A35",
+        "VirtualRide": "#8067E8",
+        "GravelRide": "#D8A06B",
         "E-Bike": "#06B6D4",
         "Corsa": "#22C55E",
         "Run": "#22C55E",
@@ -499,7 +512,7 @@ def sport_color_map(sports=None):
         "Workout": "#EF4444",
         "Pesi": "#EF4444",
         "Nuoto": "#38BDF8",
-        "Altri": "#64748B",
+        "Altri": "#748397",
     }
     if sports is None:
         return base
