@@ -16,19 +16,22 @@ TRANSPARENT = "rgba(0,0,0,0)"
 def plot_style(fig: go.Figure, height: int = 270, show_legend: bool = True) -> go.Figure:
     fig.update_layout(
         height=height,
-        margin=dict(l=2, r=2, t=0, b=0),
+        margin=dict(l=4, r=4, t=0, b=2),
         paper_bgcolor=TRANSPARENT,
         plot_bgcolor=TRANSPARENT,
         font=dict(color=TEXT, family="Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif", size=9),
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.03,
-            x=0,
+            y=1.06,
+            xanchor="left",
+            x=0.02,
             bgcolor=TRANSPARENT,
             font=dict(color=MUTED, size=8),
             title_text="",
-            itemwidth=34,
+            itemsizing="constant",
+            itemwidth=58,
+            tracegroupgap=6,
         ),
         showlegend=show_legend,
         hoverlabel=dict(
@@ -84,10 +87,6 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     if temp.empty:
         return go.Figure()
 
-    # Keep month + year granularity. When "Tutti gli anni" is selected, grouping
-    # only by month would mix years together. We also fill missing months from
-    # January of the first selected year to the latest available month so empty
-    # months remain visible instead of disappearing from the axis.
     temp = (
         temp.groupby(["year", "month_num", "month", "sport_grouped"], as_index=False, dropna=False)
         .agg(distance_km=("distance_km", "sum"))
@@ -101,18 +100,21 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
 
     periods: list[dict[str, object]] = []
     for year in range(min_year, max_year + 1):
-        start_month = 1
         end_month = 12 if year < max_year else max_month_for_max_year
-        for month_num in range(start_month, end_month + 1):
+        for month_num in range(1, end_month + 1):
+            month = MONTH_ORDER[month_num - 1]
             periods.append({
                 "year": year,
                 "month_num": month_num,
-                "month": MONTH_ORDER[month_num - 1],
-                "period_label": f"{MONTH_ORDER[month_num - 1]}<br>{year}",
+                "month": month,
+                "period_label": f"{month}<br>{year}",
             })
     periods_df = pd.DataFrame(periods)
 
     sports = [str(x) for x in temp["sport_grouped"].dropna().unique().tolist()]
+    if not sports:
+        return go.Figure()
+
     full_index = periods_df.merge(pd.DataFrame({"sport_grouped": sports}), how="cross")
     temp = full_index.merge(temp, on=["year", "month_num", "month", "sport_grouped"], how="left")
     temp["distance_km"] = temp["distance_km"].fillna(0.0)
@@ -122,7 +124,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     temp["period_label"] = temp["period_label"].astype(str)
     temp["period_idx"] = temp["period_label"].map(period_idx)
 
-    color_map = sport_color_map(temp["sport_grouped"].dropna().unique())
+    color_map = sport_color_map(sports)
     fig = px.bar(
         temp.sort_values(["year", "month_num", "sport_grouped"]),
         x="period_idx",
@@ -133,12 +135,28 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         labels={"period_idx": "", "distance_km": "km", "sport_grouped": ""},
         custom_data=["period_label", "sport_grouped"],
     )
+    for tr in fig.data:
+        tr.showlegend = False
     fig.update_traces(
         marker_line_width=0,
         opacity=0.88,
         hovertemplate="%{customdata[0]}<br>%{customdata[1]}<br>%{y:.1f} km<extra></extra>",
-        showlegend=False,
     )
+
+    # Add explicit circular legend markers. The bar traces keep their normal
+    # colors, while these invisible scatter traces control the legend appearance.
+    for sport in sports:
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="markers",
+                name=sport,
+                marker=dict(size=8, color=color_map.get(sport, MUTED), symbol="circle"),
+                hoverinfo="skip",
+                showlegend=True,
+            )
+        )
 
     tickvals = list(range(len(period_order)))
     fig.update_xaxes(
@@ -146,25 +164,40 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         tickvals=tickvals,
         ticktext=period_order,
         tickangle=0,
+        fixedrange=False,
     )
-    fig.update_layout(bargap=0.38)
+    fig.update_yaxes(fixedrange=True)
+    fig.update_layout(
+        bargap=0.38,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.08,
+            xanchor="left",
+            x=0.02,
+            itemwidth=58,
+            itemsizing="constant",
+            font=dict(color=MUTED, size=8),
+            bgcolor=TRANSPARENT,
+            title_text="",
+        ),
+    )
 
-    # Avoid squeezing 18-24 monthly bars. For longer histories, show the latest
-    # 12 months by default and enable a horizontal range slider.
     if len(period_order) > 12:
+        visible_count = min(14, len(period_order))
         fig.update_xaxes(
-            range=[max(0, len(period_order) - 12) - 0.55, len(period_order) - 0.45],
+            range=[-0.55, visible_count - 0.45],
             rangeslider=dict(
                 visible=True,
-                thickness=0.075,
-                bgcolor="rgba(255,255,255,0.09)",
+                thickness=0.070,
+                bgcolor="rgba(255,255,255,0.08)",
                 bordercolor="rgba(255,255,255,0.10)",
                 borderwidth=1,
             ),
         )
-        return plot_style(fig, height=292, show_legend=False)
+        return plot_style(fig, height=318, show_legend=True)
 
-    return plot_style(fig, height=260, show_legend=False)
+    return plot_style(fig, height=282, show_legend=True)
 
 
 def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
@@ -186,8 +219,10 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         color_discrete_map=color_map,
     )
     fig.update_traces(
-        domain={"x": [0.00, 0.56], "y": [0.05, 0.95]},
+        domain={"x": [0.00, 0.56], "y": [0.06, 0.94]},
         textinfo="none",
+        texttemplate=None,
+        textposition="none",
         marker=dict(line=dict(color=PANEL, width=1)),
         hovertemplate="%{label}<br>%{value:.1f} km<br>%{percent}<extra></extra>",
         showlegend=False,
@@ -218,8 +253,8 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
                 type="circle",
                 xref="paper",
                 yref="paper",
-                x0=0.620,
-                x1=0.645,
+                x0=0.625,
+                x1=0.650,
                 y0=y - 0.018,
                 y1=y + 0.018,
                 fillcolor=color,
@@ -229,7 +264,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         annotations.append(
             dict(
                 text=sport,
-                x=0.668,
+                x=0.675,
                 y=y,
                 xref="paper",
                 yref="paper",
@@ -241,7 +276,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         annotations.append(
             dict(
                 text=f"{row['pct']:.1f}%",
-                x=0.955,
+                x=0.985,
                 y=y,
                 xref="paper",
                 yref="paper",
@@ -252,12 +287,13 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         )
 
     fig.update_layout(
-        margin=dict(l=0, r=18, t=0, b=0),
+        margin=dict(l=0, r=34, t=0, b=0),
         showlegend=False,
         annotations=annotations,
         shapes=shapes,
     )
-    return plot_style(fig, height=292, show_legend=False)
+    return plot_style(fig, height=318, show_legend=False)
+
 
 def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int) -> go.Figure:
     temp = cumulative_metric_df.copy()

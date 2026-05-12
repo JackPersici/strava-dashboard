@@ -102,7 +102,6 @@ def render_overview(data: dict) -> None:
         if monthly_sport_df.empty:
             _empty()
         else:
-            st.markdown(_sport_legend_html(monthly_sport_df), unsafe_allow_html=True)
             st.plotly_chart(monthly_distance_chart(monthly_sport_df), use_container_width=True, config=_plot_config())
 
         st.markdown(section_header_html("Trend vs anno scorso", "Confronto cumulativo progressivo"), unsafe_allow_html=True)
