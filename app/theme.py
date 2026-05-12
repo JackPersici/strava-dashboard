@@ -320,13 +320,40 @@ def inject_global_css() -> None:
         .sd-chart-card {{ padding: 10px 11px 7px; }}
         .sd-card.flat {{ background: rgba(9,21,37,0.70); box-shadow: none; }}
 
+
+
+        .sd-chart-legend {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+            margin: -2px 0 4px 6px;
+            color: #BFD0E4;
+            font-size: .62rem;
+            line-height: 1;
+        }
+        .sd-chart-legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+        .sd-chart-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            display: inline-block;
+            box-shadow: 0 0 0 1px rgba(255,255,255,.08);
+        }
+
         /* Streamlit plot containers get a card feel even if HTML wrappers are not respected */
         div[data-testid="stPlotlyChart"] {{
             background: rgba(12,23,38,0.58);
             border: 1px solid {COLORS['border_soft']};
             border-radius: 15px;
-            padding: 7px 7px 1px;
+            padding: 7px 7px 0;
             box-shadow: 0 7px 18px rgba(0,0,0,0.10);
+            overflow: hidden !important;
         }}
         .sd-card div[data-testid="stPlotlyChart"] {{ background: transparent; border: 0; box-shadow: none; padding: 0; }}
 
