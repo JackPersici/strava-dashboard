@@ -223,8 +223,8 @@ GREEN = COLORS["green"]
 PANEL = COLORS["card"]
 TEXT = COLORS["text"]
 
-def sport_color_map():
-    return {
+def sport_color_map(sports=None):
+    base = {
         "Ride": "#4F8CFF",
         "VirtualRide": "#8B5CF6",
         "Run": "#2ECC71",
@@ -232,3 +232,8 @@ def sport_color_map():
         "Hike": "#E67E22",
         "Workout": "#E74C3C",
     }
+
+    if sports is None:
+        return base
+
+    return {sport: base.get(sport, "#9DA7B3") for sport in sports}
