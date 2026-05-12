@@ -145,7 +145,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     fig.update_traces(
         marker_line_width=0,
         opacity=0.90,
-        width=0.34,
+        width=0.26,
         hovertemplate="%{customdata[0]}<br>%{customdata[1]}<br>%{y:.1f} km<extra></extra>",
         showlegend=False,
     )
@@ -159,8 +159,8 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     )
     fig.update_yaxes(fixedrange=True)
     fig.update_layout(
-        bargap=0.58,
-        bargroupgap=0.08,
+        bargap=0.68,
+        bargroupgap=0.10,
         showlegend=False,
     )
     fig = plot_style(fig, height=278, show_legend=False)
@@ -189,7 +189,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         color_discrete_map=color_map,
     )
     fig.update_traces(
-        domain={"x": [0.00, 0.58], "y": [0.08, 0.92]},
+        domain={"x": [0.00, 0.60], "y": [0.06, 0.94]},
         textinfo="none",
         texttemplate=None,
         textposition="none",
@@ -201,7 +201,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
     annotations = [
         dict(
             text=f"<b>{total:,.1f}</b><br><span style='font-size:10px'>km totali</span>",
-            x=0.29,
+            x=0.30,
             y=0.50,
             xref="paper",
             yref="paper",
@@ -223,7 +223,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         annotations.extend([
             dict(
                 text="●",
-                x=0.635,
+                x=0.665,
                 y=y,
                 xref="paper",
                 yref="paper",
@@ -234,7 +234,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
             ),
             dict(
                 text=sport,
-                x=0.685,
+                x=0.720,
                 y=y,
                 xref="paper",
                 yref="paper",
@@ -245,7 +245,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
             ),
             dict(
                 text=f"{row['pct']:.1f}%",
-                x=0.955,
+                x=0.990,
                 y=y,
                 xref="paper",
                 yref="paper",
@@ -257,7 +257,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         ])
 
     fig.update_layout(
-        margin=dict(l=0, r=8, t=0, b=0),
+        margin=dict(l=0, r=0, t=0, b=0),
         showlegend=False,
         annotations=annotations,
     )

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -17,8 +18,15 @@ from app.theme import (
 )
 
 
+PANEL_HEIGHT = 430
+
+
+def _esc(value: object) -> str:
+    return html.escape(str(value))
+
+
 def _empty(message: str = "Nessun dato disponibile.") -> None:
-    st.markdown(f"<div class='big-empty'>{message}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='big-empty'>{_esc(message)}</div>", unsafe_allow_html=True)
 
 
 def _metric_delta(value: float) -> str:
@@ -34,8 +42,6 @@ def _delta_badge(value: float) -> str:
     return f"<span class='sd-pill {klass}'>{fmt_pct(value)} vs anno scorso</span>"
 
 
-
-
 def _sport_legend_html(df) -> str:
     if df.empty or "sport_grouped" not in df.columns:
         return ""
@@ -44,10 +50,10 @@ def _sport_legend_html(df) -> str:
     sports = [s for s in preferred if s in available] + [s for s in available if s not in preferred]
     color_map = sport_color_map(sports)
     items = "".join(
-        f"<span class='sd-chart-legend-item'><span class='sd-chart-dot' style='background:{color_map.get(sport, '#94A3B8')}'></span>{sport}</span>"
+        f"<span class='sd-card-legend-item'><span class='sd-card-dot' style='background:{color_map.get(sport, '#94A3B8')}'></span>{_esc(sport)}</span>"
         for sport in sports
     )
-    return f"<div class='sd-chart-legend horizontal'>{items}</div>"
+    return f"<div class='sd-card-legend'>{items}</div>"
 
 
 def _plotly_fragment(fig, height: int) -> str:
@@ -60,10 +66,9 @@ def _plotly_fragment(fig, height: int) -> str:
     )
 
 
-def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: int = 430) -> None:
-    """Single boxed panel: title, subtitle, legend, chart and simple horizontal scrollbar."""
-    chart_height = 274
-    html = _plotly_fragment(fig, chart_height)
+def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
+    chart_height = 282
+    html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
         <style>
@@ -81,20 +86,20 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
             }}
             .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin-bottom: 16px;}}
             .sd-card-subtitle {{font-size: .82rem; color: #AFC0D2; margin-bottom: 18px;}}
-            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 22px; align-items: center; margin-bottom: 12px; font-size: .80rem; color: #EAF2FF;}}
-            .sd-card-legend .sd-chart-legend-item {{display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;}}
-            .sd-card-legend .sd-chart-dot {{width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
+            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 22px; align-items: center; margin-bottom: 10px; font-size: .80rem; color: #EAF2FF;}}
+            .sd-card-legend-item {{display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;}}
+            .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
             .sd-scroll-shell {{
                 width: 100%;
-                height: 306px;
+                height: 300px;
                 overflow-x: auto;
                 overflow-y: hidden;
-                padding-bottom: 12px;
+                padding-bottom: 10px;
                 box-sizing: border-box;
                 scrollbar-width: thin;
                 scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
             }}
-            .sd-scroll-shell::-webkit-scrollbar {{height: 11px;}}
+            .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
             .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height}px;}}
@@ -102,9 +107,9 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
         <div class="sd-card-panel">
             <div class="sd-card-title">Andamento mensile</div>
             <div class="sd-card-subtitle">Distanza aggregata per mese e sport</div>
-            <div class="sd-card-legend">{legend_html}</div>
+            {legend_html}
             <div class="sd-scroll-shell">
-                <div class="sd-scroll-inner">{html}</div>
+                <div class="sd-scroll-inner">{html_fragment}</div>
             </div>
         </div>
         """,
@@ -113,10 +118,9 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
     )
 
 
-def _render_donut_card(fig, height: int = 430) -> None:
-    """Single boxed donut panel, same height as monthly chart."""
-    chart_height = 316
-    html = _plotly_fragment(fig, chart_height)
+def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
+    chart_height = 318
+    html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
         <style>
@@ -139,7 +143,7 @@ def _render_donut_card(fig, height: int = 430) -> None:
         <div class="sd-donut-panel">
             <div class="sd-card-title">Distribuzione sport</div>
             <div class="sd-card-subtitle">Peso relativo per distanza</div>
-            <div class="sd-donut-chart">{html}</div>
+            <div class="sd-donut-chart">{html_fragment}</div>
         </div>
         """,
         height=height,
@@ -147,7 +151,130 @@ def _render_donut_card(fig, height: int = 430) -> None:
     )
 
 
+def _zone_progress_html(row) -> str:
+    zone = _esc(row.get("zone", "Zona"))
+    activities = float(row.get("activities_pct", 0.0))
+    time_pct = float(row.get("time_pct", 0.0))
+    width = max(2.0, min(100.0, time_pct))
+    return f"""
+    <div class="sd-zone-row">
+        <div class="sd-zone-top">
+            <div>
+                <div class="sd-zone-label">{zone}</div>
+                <div class="sd-zone-sub">{activities:.0f}% attività</div>
+            </div>
+            <div class="sd-zone-value">{time_pct:.0f}% tempo</div>
+        </div>
+        <div class="sd-zone-track"><div class="sd-zone-fill" style="width:{width:.1f}%"></div></div>
+    </div>
+    """
+
+
+def _compact_overview_card(title: str, subtitle: str, body_html: str, height: int = 328) -> str:
+    return f"""
+    <div class="sd-compact-card" style="min-height:{height}px;">
+        <div class="sd-compact-head">
+            <h3>{_esc(title)}</h3>
+            <p>{_esc(subtitle)}</p>
+        </div>
+        <div class="sd-compact-body">{body_html}</div>
+    </div>
+    """
+
+
+def _inject_overview_final_css() -> None:
+    st.markdown(
+        """
+        <style>
+        .sd-compact-card {
+            border: 1px solid rgba(216,230,255,0.095);
+            border-radius: 18px;
+            background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.045), transparent 17rem), rgba(10,20,34,0.78);
+            padding: 16px 18px 14px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .sd-compact-head h3 {
+            margin: 0;
+            color: #F7FAFF;
+            font-size: .98rem;
+            letter-spacing: -0.035em;
+            font-weight: 830;
+        }
+        .sd-compact-head p {
+            margin: 10px 0 14px;
+            color: #AFC0D2;
+            font-size: .76rem;
+        }
+        .sd-compact-body .mini-stat,
+        .sd-compact-body .insight-row {
+            padding: 8px 9px;
+            margin-bottom: 6px;
+        }
+        .sd-duo-stack {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        .sd-duo-title {
+            color: #F7FAFF;
+            font-size: .82rem;
+            font-weight: 820;
+            margin: 0 0 7px;
+            letter-spacing: -0.02em;
+        }
+        .sd-zone-row {
+            border: 1px solid rgba(216,230,255,0.075);
+            background: rgba(7,16,28,0.45);
+            border-radius: 13px;
+            padding: 8px 10px;
+            margin-bottom: 7px;
+        }
+        .sd-zone-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .sd-zone-label {
+            color: #AFC0D2;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-size: .56rem;
+            font-weight: 800;
+        }
+        .sd-zone-sub {
+            color: #8EA2B8;
+            font-size: .65rem;
+            margin-top: 3px;
+        }
+        .sd-zone-value {
+            color: #F7FAFF;
+            font-size: .86rem;
+            font-weight: 820;
+            white-space: nowrap;
+        }
+        .sd-zone-track {
+            height: 5px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.055);
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .sd-zone-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(252,76,2,.86), rgba(139,92,246,.95));
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def render_overview(data: dict) -> None:
+    _inject_overview_final_css()
+
     kpis = data["kpis"]
     distance_compare = data["distance_compare"]
     time_compare = data["time_compare"]
@@ -162,9 +289,6 @@ def render_overview(data: dict) -> None:
     main_sport = data["primary_sport"]
     consistency = data["consistency"]
 
-    # =====================================================
-    # COMPACT PAGE CONTEXT - avoids the duplicated hero effect
-    # =====================================================
     st.markdown(
         overview_topline(
             "Overview allenamenti",
@@ -178,9 +302,6 @@ def render_overview(data: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    # =====================================================
-    # TOP KPI - compact premium row
-    # =====================================================
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(card_html("Attività", fmt_int(kpis["activities"]), _metric_delta(distance_compare["delta_pct"])), unsafe_allow_html=True)
@@ -194,7 +315,7 @@ def render_overview(data: dict) -> None:
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
     # =====================================================
-    # MAIN GRID
+    # ROW 1: Monthly trend + sport distribution
     # =====================================================
     left, right = st.columns([1.82, 1.0], gap="medium")
 
@@ -205,9 +326,22 @@ def render_overview(data: dict) -> None:
             legend_html = _sport_legend_html(monthly_sport_df)
             fig = monthly_distance_chart(monthly_sport_df)
             month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
-            _render_monthly_card(fig, legend_html, min_width=max(760, month_count * 44), height=430)
+            _render_monthly_card(fig, legend_html, min_width=max(760, month_count * 40), height=PANEL_HEIGHT)
 
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
+    with right:
+        if sport_summary_df.empty:
+            _empty()
+        else:
+            _render_donut_card(sport_donut_chart(sport_summary_df), height=PANEL_HEIGHT)
+
+    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+
+    # =====================================================
+    # ROW 2: compact cumulative trend + compact right rail
+    # =====================================================
+    t_left, t_right = st.columns([1.82, 1.0], gap="medium")
+
+    with t_left:
         st.markdown(section_header_html("Trend vs anno scorso", "Confronto cumulativo progressivo"), unsafe_allow_html=True)
         if cumulative_metric_df.empty:
             _empty("Nessun confronto disponibile.")
@@ -222,28 +356,32 @@ def render_overview(data: dict) -> None:
                 unsafe_allow_html=True,
             )
 
-    with right:
-        if sport_summary_df.empty:
-            _empty()
-        else:
-            _render_donut_card(sport_donut_chart(sport_summary_df), height=430)
+    with t_right:
+        insights_html = "".join([
+            insight_row_html("Sport principale", main_sport["sport"], f"{main_sport['pct']:.0f}% distanza"),
+            insight_row_html("Giorno preferito", fav_day["weekday"], f"{fav_day['pct']:.0f}% attività"),
+            insight_row_html("Settimana top", active_week.get("week", "-"), f"{active_week.get('activities', 0)} attività"),
+            insight_row_html("Costanza", f"{consistency:.0f}/100", "presenza settimanale"),
+        ])
+        averages_html = "".join([
+            mini_stat_html("Distanza media", fmt_km(kpis["avg_distance_km"]), "per attività"),
+            mini_stat_html("Tempo medio", fmt_h(kpis["avg_time_h"]), "per attività"),
+            mini_stat_html("Dislivello medio", fmt_m(kpis["avg_elevation_m"]), "per attività"),
+        ])
+        st.markdown(
+            _compact_overview_card(
+                "Segnali rapidi",
+                "Insight e medie per singola attività",
+                f"<div class='sd-duo-stack'><div><div class='sd-duo-title'>Insights</div>{insights_html}</div><div><div class='sd-duo-title'>Medie</div>{averages_html}</div></div>",
+                height=316,
+            ),
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        section_open("Insights", "Segnali rapidi")
-        st.markdown(insight_row_html("Sport principale", main_sport["sport"], f"{main_sport['pct']:.0f}% distanza"), unsafe_allow_html=True)
-        st.markdown(insight_row_html("Giorno preferito", fav_day["weekday"], f"{fav_day['pct']:.0f}% attività"), unsafe_allow_html=True)
-        st.markdown(insight_row_html("Settimana top", active_week.get("week", "-"), f"{active_week.get('activities', 0)} attività"), unsafe_allow_html=True)
-        st.markdown(insight_row_html("Costanza", f"{consistency:.0f}/100", "presenza settimanale"), unsafe_allow_html=True)
-        section_close()
-
-        section_open("Medie", "Per singola attività")
-        st.markdown(mini_stat_html("Distanza media", fmt_km(kpis["avg_distance_km"]), "per attività"), unsafe_allow_html=True)
-        st.markdown(mini_stat_html("Tempo medio", fmt_h(kpis["avg_time_h"]), "per attività"), unsafe_allow_html=True)
-        st.markdown(mini_stat_html("Dislivello medio", fmt_m(kpis["avg_elevation_m"]), "per attività"), unsafe_allow_html=True)
-        section_close()
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
     # =====================================================
-    # BOTTOM GRID
+    # ROW 3: bottom widgets
     # =====================================================
     b1, b2 = st.columns([1.28, 1.0], gap="medium")
 
@@ -269,12 +407,5 @@ def render_overview(data: dict) -> None:
             _empty()
         else:
             for _, row in zones.iterrows():
-                st.markdown(
-                    insight_row_html(
-                        str(row["zone"]),
-                        f"{row['time_pct']:.0f}% tempo",
-                        f"{row['activities_pct']:.0f}% attività",
-                    ),
-                    unsafe_allow_html=True,
-                )
+                st.markdown(_zone_progress_html(row), unsafe_allow_html=True)
         section_close()
