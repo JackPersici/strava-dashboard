@@ -364,16 +364,16 @@ def inject_global_css() -> None:
 
 
         /* Step 4 premium polish overrides */
-        .sd-page-title { font-size: clamp(1.28rem, 2.0vw, 1.62rem); font-weight: 780; letter-spacing: -0.04em; }
-        .sd-page-kicker, .sd-hero-eyebrow, .sd-eyebrow { font-weight: 760; letter-spacing: .17em; }
-        .sd-section-title h3 { font-size: .84rem; font-weight: 720; letter-spacing: -0.018em; }
-        .sd-section-title p { font-size: .70rem; opacity: .92; }
-        .kpi-card { min-height: 64px; }
-        .kpi-value { text-shadow: none; }
-        .sd-pill { padding: 3px 8px; font-weight: 720; }
-        .mini-value, .insight-main, .insight-value { font-weight: 760; }
-        .mini-stat, .insight-row { box-shadow: none; }
-        div[data-testid="stPlotlyChart"] svg { overflow: visible; }
+        .sd-page-title {{ font-size: clamp(1.28rem, 2.0vw, 1.62rem); font-weight: 780; letter-spacing: -0.04em; }}
+        .sd-page-kicker, .sd-hero-eyebrow, .sd-eyebrow {{ font-weight: 760; letter-spacing: .17em; }}
+        .sd-section-title h3 {{ font-size: .84rem; font-weight: 720; letter-spacing: -0.018em; }}
+        .sd-section-title p {{ font-size: .70rem; opacity: .92; }}
+        .kpi-card {{ min-height: 64px; }}
+        .kpi-value {{ text-shadow: none; }}
+        .sd-pill {{ padding: 3px 8px; font-weight: 720; }}
+        .mini-value, .insight-main, .insight-value {{ font-weight: 760; }}
+        .mini-stat, .insight-row {{ box-shadow: none; }}
+        div[data-testid="stPlotlyChart"] svg {{ overflow: visible; }}
 
         @media (max-width: 768px) {{
             .block-container {{ padding-left: 0.70rem; padding-right: 0.70rem; padding-top: .4rem; }}
