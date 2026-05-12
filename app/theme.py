@@ -213,3 +213,22 @@ def render_header():
         """,
         unsafe_allow_html=True,
     )
+
+# ---------------------------------------------------------
+# Retrocompatibilità con moduli esistenti
+# ---------------------------------------------------------
+
+ACCENT = COLORS["primary"]
+GREEN = COLORS["green"]
+PANEL = COLORS["card"]
+TEXT = COLORS["text"]
+
+def sport_color_map():
+    return {
+        "Ride": "#4F8CFF",
+        "VirtualRide": "#8B5CF6",
+        "Run": "#2ECC71",
+        "Walk": "#F1C40F",
+        "Hike": "#E67E22",
+        "Workout": "#E74C3C",
+    }
