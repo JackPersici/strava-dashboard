@@ -91,6 +91,10 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         temp.groupby(["year", "month_num", "month", "sport_grouped"], as_index=False, dropna=False)
         .agg(distance_km=("distance_km", "sum"))
     )
+    temp = temp.dropna(subset=["year", "month_num"])
+    if temp.empty:
+        return go.Figure()
+
     temp["year"] = temp["year"].astype(int)
     temp["month_num"] = temp["month_num"].astype(int)
 
@@ -141,6 +145,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     fig.update_traces(
         marker_line_width=0,
         opacity=0.90,
+        width=0.34,
         hovertemplate="%{customdata[0]}<br>%{customdata[1]}<br>%{y:.1f} km<extra></extra>",
         showlegend=False,
     )
@@ -154,11 +159,12 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     )
     fig.update_yaxes(fixedrange=True)
     fig.update_layout(
-        bargap=0.38,
+        bargap=0.58,
+        bargroupgap=0.08,
         showlegend=False,
     )
-    fig = plot_style(fig, height=276, show_legend=False)
-    fig.update_layout(margin=dict(l=44, r=10, t=2, b=42))
+    fig = plot_style(fig, height=278, show_legend=False)
+    fig.update_layout(margin=dict(l=48, r=12, t=2, b=46))
     fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
     fig.update_xaxes(automargin=True)
     return fig
@@ -183,7 +189,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         color_discrete_map=color_map,
     )
     fig.update_traces(
-        domain={"x": [0.00, 0.56], "y": [0.06, 0.94]},
+        domain={"x": [0.00, 0.58], "y": [0.08, 0.92]},
         textinfo="none",
         texttemplate=None,
         textposition="none",
@@ -195,7 +201,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
     annotations = [
         dict(
             text=f"<b>{total:,.1f}</b><br><span style='font-size:10px'>km totali</span>",
-            x=0.28,
+            x=0.29,
             y=0.50,
             xref="paper",
             yref="paper",
@@ -255,7 +261,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         showlegend=False,
         annotations=annotations,
     )
-    return plot_style(fig, height=304, show_legend=False)
+    return plot_style(fig, height=316, show_legend=False)
 
 def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int) -> go.Figure:
     temp = cumulative_metric_df.copy()

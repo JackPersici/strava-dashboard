@@ -50,29 +50,102 @@ def _sport_legend_html(df) -> str:
     return f"<div class='sd-chart-legend horizontal'>{items}</div>"
 
 
-def _render_scrollable_plotly(fig, min_width: int = 820, height: int = 334) -> None:
-    """Render a Plotly chart inside a card with a simple horizontal scrollbar."""
-    chart_height = max(240, height - 44)
-    html = fig.to_html(
+def _plotly_fragment(fig, height: int) -> str:
+    return fig.to_html(
         include_plotlyjs="cdn",
         full_html=False,
         config={"displayModeBar": False, "responsive": True},
         default_width="100%",
-        default_height=f"{chart_height}px",
+        default_height=f"{height}px",
     )
+
+
+def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: int = 430) -> None:
+    """Single boxed panel: title, subtitle, legend, chart and simple horizontal scrollbar."""
+    chart_height = 274
+    html = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
-        <div style="width:100%; height:{height}px; background:rgba(12,23,38,0.58); border:1px solid rgba(216,230,255,0.04); border-radius:15px; padding:10px 12px 8px 12px; box-sizing:border-box; overflow:hidden;">
-            <div style="width:100%; height:{height - 18}px; overflow-x:auto; overflow-y:hidden; padding-bottom:10px; box-sizing:border-box; scrollbar-width:thin; scrollbar-color:rgba(226,232,240,0.82) rgba(255,255,255,0.10);">
-                <div style="min-width:{min_width}px; height:{chart_height}px;">
-                    {html}
-                </div>
+        <style>
+            .sd-card-panel {{
+                width: 100%;
+                height: {height}px;
+                box-sizing: border-box;
+                border: 1px solid rgba(216,230,255,0.095);
+                border-radius: 18px;
+                background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.055), transparent 18rem), rgba(10,20,34,0.92);
+                padding: 22px 24px 16px 24px;
+                overflow: hidden;
+                color: #F7FAFF;
+                font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
+            }}
+            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin-bottom: 16px;}}
+            .sd-card-subtitle {{font-size: .82rem; color: #AFC0D2; margin-bottom: 18px;}}
+            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 22px; align-items: center; margin-bottom: 12px; font-size: .80rem; color: #EAF2FF;}}
+            .sd-card-legend .sd-chart-legend-item {{display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;}}
+            .sd-card-legend .sd-chart-dot {{width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
+            .sd-scroll-shell {{
+                width: 100%;
+                height: 306px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: 12px;
+                box-sizing: border-box;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
+            }}
+            .sd-scroll-shell::-webkit-scrollbar {{height: 11px;}}
+            .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
+            .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
+            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height}px;}}
+        </style>
+        <div class="sd-card-panel">
+            <div class="sd-card-title">Andamento mensile</div>
+            <div class="sd-card-subtitle">Distanza aggregata per mese e sport</div>
+            <div class="sd-card-legend">{legend_html}</div>
+            <div class="sd-scroll-shell">
+                <div class="sd-scroll-inner">{html}</div>
             </div>
         </div>
         """,
         height=height,
         scrolling=False,
     )
+
+
+def _render_donut_card(fig, height: int = 430) -> None:
+    """Single boxed donut panel, same height as monthly chart."""
+    chart_height = 316
+    html = _plotly_fragment(fig, chart_height)
+    components.html(
+        f"""
+        <style>
+            .sd-donut-panel {{
+                width: 100%;
+                height: {height}px;
+                box-sizing: border-box;
+                border: 1px solid rgba(216,230,255,0.095);
+                border-radius: 18px;
+                background: radial-gradient(circle at 35% 0%, rgba(125,183,255,0.050), transparent 18rem), rgba(10,20,34,0.92);
+                padding: 22px 24px 16px 24px;
+                overflow: hidden;
+                color: #F7FAFF;
+                font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
+            }}
+            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin-bottom: 16px;}}
+            .sd-card-subtitle {{font-size: .82rem; color: #AFC0D2; margin-bottom: 18px;}}
+            .sd-donut-chart {{height: {chart_height}px;}}
+        </style>
+        <div class="sd-donut-panel">
+            <div class="sd-card-title">Distribuzione sport</div>
+            <div class="sd-card-subtitle">Peso relativo per distanza</div>
+            <div class="sd-donut-chart">{html}</div>
+        </div>
+        """,
+        height=height,
+        scrolling=False,
+    )
+
 
 def render_overview(data: dict) -> None:
     kpis = data["kpis"]
@@ -126,15 +199,15 @@ def render_overview(data: dict) -> None:
     left, right = st.columns([1.82, 1.0], gap="medium")
 
     with left:
-        st.markdown(section_header_html("Andamento mensile", "Distanza aggregata per mese e sport"), unsafe_allow_html=True)
         if monthly_sport_df.empty:
             _empty()
         else:
-            st.markdown(_sport_legend_html(monthly_sport_df), unsafe_allow_html=True)
+            legend_html = _sport_legend_html(monthly_sport_df)
             fig = monthly_distance_chart(monthly_sport_df)
             month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
-            _render_scrollable_plotly(fig, min_width=max(820, month_count * 58), height=334)
+            _render_monthly_card(fig, legend_html, min_width=max(760, month_count * 44), height=430)
 
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
         st.markdown(section_header_html("Trend vs anno scorso", "Confronto cumulativo progressivo"), unsafe_allow_html=True)
         if cumulative_metric_df.empty:
             _empty("Nessun confronto disponibile.")
@@ -150,12 +223,12 @@ def render_overview(data: dict) -> None:
             )
 
     with right:
-        st.markdown(section_header_html("Distribuzione sport", "Peso relativo per distanza"), unsafe_allow_html=True)
         if sport_summary_df.empty:
             _empty()
         else:
-            st.plotly_chart(sport_donut_chart(sport_summary_df), use_container_width=True, config=_plot_config())
+            _render_donut_card(sport_donut_chart(sport_summary_df), height=430)
 
+        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
         section_open("Insights", "Segnali rapidi")
         st.markdown(insight_row_html("Sport principale", main_sport["sport"], f"{main_sport['pct']:.0f}% distanza"), unsafe_allow_html=True)
         st.markdown(insight_row_html("Giorno preferito", fav_day["weekday"], f"{fav_day['pct']:.0f}% attività"), unsafe_allow_html=True)
