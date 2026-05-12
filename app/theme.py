@@ -253,7 +253,7 @@ def inject_global_css() -> None:
         .sd-pill.green {{ border-color: rgba(34,197,94,.28); background: rgba(34,197,94,.10); color: #86EFAC; }}
         .sd-pill.red {{ border-color: rgba(239,68,68,.28); background: rgba(239,68,68,.10); color: #FDA4AF; }}
 
-        .sd-code-chip, .sd-dev-chip, .sd-debug-chip { display: none !important; }
+        .sd-code-chip, .sd-dev-chip, .sd-debug-chip {{ display: none !important; }}
 
         .kpi-card {{
             position: relative;
