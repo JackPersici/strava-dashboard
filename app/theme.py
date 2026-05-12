@@ -322,7 +322,7 @@ def inject_global_css() -> None:
 
 
 
-        .sd-chart-legend {
+        .sd-chart-legend {{
             display: flex;
             align-items: center;
             gap: 18px;
@@ -331,20 +331,20 @@ def inject_global_css() -> None:
             color: #BFD0E4;
             font-size: .62rem;
             line-height: 1;
-        }
-        .sd-chart-legend-item {
+        }}
+        .sd-chart-legend-item {{
             display: inline-flex;
             align-items: center;
             gap: 7px;
             white-space: nowrap;
-        }
-        .sd-chart-dot {
+        }}
+        .sd-chart-dot {{
             width: 8px;
             height: 8px;
             border-radius: 999px;
             display: inline-block;
             box-shadow: 0 0 0 1px rgba(255,255,255,.08);
-        }
+        }}
 
         /* Streamlit plot containers get a card feel even if HTML wrappers are not respected */
         div[data-testid="stPlotlyChart"] {{
