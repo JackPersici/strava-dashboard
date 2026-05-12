@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from app.charts import cumulative_trend_chart, monthly_distance_chart, sport_donut_chart
 from app.formatters import fmt_h, fmt_int, fmt_km, fmt_m, fmt_pct
@@ -38,13 +39,37 @@ def _delta_badge(value: float) -> str:
 def _sport_legend_html(df) -> str:
     if df.empty or "sport_grouped" not in df.columns:
         return ""
-    sports = [str(x) for x in df["sport_grouped"].dropna().unique().tolist()]
+    available = [str(x) for x in df["sport_grouped"].dropna().unique().tolist()]
+    preferred = ["Ciclismo", "Ride", "VirtualRide", "GravelRide", "Altri"]
+    sports = [s for s in preferred if s in available] + [s for s in available if s not in preferred]
     color_map = sport_color_map(sports)
     items = "".join(
         f"<span class='sd-chart-legend-item'><span class='sd-chart-dot' style='background:{color_map.get(sport, '#94A3B8')}'></span>{sport}</span>"
         for sport in sports
     )
     return f"<div class='sd-chart-legend horizontal'>{items}</div>"
+
+
+def _render_scrollable_plotly(fig, min_width: int = 820, height: int = 300) -> None:
+    """Render a Plotly chart inside a simple horizontal scrollbar container."""
+    html = fig.to_html(
+        include_plotlyjs="cdn",
+        full_html=False,
+        config={"displayModeBar": False, "responsive": True},
+        default_width="100%",
+        default_height=f"{height - 22}px",
+    )
+    components.html(
+        f"""
+        <div style="width:100%; height:{height}px; overflow-x:auto; overflow-y:hidden; padding-bottom:8px; box-sizing:border-box;">
+            <div style="min-width:{min_width}px; height:{height - 22}px;">
+                {html}
+            </div>
+        </div>
+        """,
+        height=height,
+        scrolling=False,
+    )
 
 def render_overview(data: dict) -> None:
     kpis = data["kpis"]
@@ -102,7 +127,10 @@ def render_overview(data: dict) -> None:
         if monthly_sport_df.empty:
             _empty()
         else:
-            st.plotly_chart(monthly_distance_chart(monthly_sport_df), use_container_width=True, config=_plot_config())
+            st.markdown(_sport_legend_html(monthly_sport_df), unsafe_allow_html=True)
+            fig = monthly_distance_chart(monthly_sport_df)
+            month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
+            _render_scrollable_plotly(fig, min_width=max(780, month_count * 58), height=294)
 
         st.markdown(section_header_html("Trend vs anno scorso", "Confronto cumulativo progressivo"), unsafe_allow_html=True)
         if cumulative_metric_df.empty:
