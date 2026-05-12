@@ -28,7 +28,7 @@ def plot_style(fig: go.Figure, height: int = 270, show_legend: bool = True) -> g
             bgcolor=TRANSPARENT,
             font=dict(color=MUTED, size=9),
             title_text="",
-            itemwidth=28,
+            itemwidth=30,
         ),
         showlegend=show_legend,
         hoverlabel=dict(
