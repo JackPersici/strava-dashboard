@@ -56,42 +56,79 @@ def plot_style(fig: go.Figure, height: int = 270, show_legend: bool = True) -> g
     return fig
 
 
+def _legend_circle_traces(fig: go.Figure, color_map: dict) -> go.Figure:
+    """Replace Plotly's bar-square legend with compact circular markers."""
+    existing_names = []
+    for trace in fig.data:
+        if getattr(trace, "name", None) and trace.name not in existing_names:
+            existing_names.append(trace.name)
+        trace.showlegend = False
+
+    for name in existing_names:
+        fig.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="markers",
+                name=str(name),
+                marker=dict(size=8, color=color_map.get(name, MUTED), symbol="circle"),
+                hoverinfo="skip",
+                showlegend=True,
+            )
+        )
+    return fig
+
+
 def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     temp = monthly_sport_df.copy()
     if temp.empty:
         return go.Figure()
 
-    # When multiple years are visible, aggregate by calendar month so the chart
-    # follows the natural Jan-Dec rhythm instead of the raw year/month row order.
+    # Keep year/month granularity: aggregating only by month would mix different
+    # years and make Jan-Dec totals misleading when "Tutti gli anni" is selected.
     temp = (
-        temp.groupby(["month_num", "month", "sport_grouped"], as_index=False, dropna=False)
+        temp.groupby(["year", "month_num", "month", "sport_grouped"], as_index=False, dropna=False)
         .agg(distance_km=("distance_km", "sum"))
-        .sort_values("month_num")
+        .sort_values(["year", "month_num"])
     )
-    temp["month"] = pd.Categorical(temp["month"], categories=MONTH_ORDER, ordered=True)
+    temp["year"] = temp["year"].astype(int)
+    temp["period_label"] = temp["month"].astype(str) + " " + temp["year"].astype(str)
+    period_order = (
+        temp[["year", "month_num", "period_label"]]
+        .drop_duplicates()
+        .sort_values(["year", "month_num"])["period_label"]
+        .tolist()
+    )
+    temp["period_label"] = pd.Categorical(temp["period_label"], categories=period_order, ordered=True)
 
     color_map = sport_color_map(temp["sport_grouped"].dropna().unique())
     fig = px.bar(
         temp,
-        x="month",
+        x="period_label",
         y="distance_km",
         color="sport_grouped",
         barmode="stack",
         color_discrete_map=color_map,
-        category_orders={"month": MONTH_ORDER},
-        labels={"month": "", "distance_km": "km", "sport_grouped": ""},
+        category_orders={"period_label": period_order},
+        labels={"period_label": "", "distance_km": "km", "sport_grouped": ""},
     )
     fig.update_traces(marker_line_width=0, opacity=0.86, hovertemplate="%{x}<br>%{y:.1f} km<extra></extra>")
     fig.update_layout(bargap=0.46)
-    fig.update_xaxes(categoryorder="array", categoryarray=MONTH_ORDER)
+    fig.update_xaxes(categoryorder="array", categoryarray=period_order)
+    fig = _legend_circle_traces(fig, color_map)
     return plot_style(fig, height=252)
+
 
 def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
     temp = sport_summary_df.copy()
     if temp.empty:
         return go.Figure()
 
+    temp = temp.sort_values("distance_km", ascending=False).reset_index(drop=True)
+    total = float(temp["distance_km"].sum()) or 1.0
+    temp["pct"] = temp["distance_km"] / total * 100.0
     color_map = sport_color_map(temp["sport_grouped"].dropna().unique())
+
     fig = px.pie(
         temp,
         names="sport_grouped",
@@ -101,30 +138,47 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         color_discrete_map=color_map,
     )
     fig.update_traces(
-        domain={"x": [0.00, 0.62], "y": [0.04, 0.96]},
+        domain={"x": [0.00, 0.55], "y": [0.06, 0.94]},
         textinfo="percent",
         textposition="inside",
         textfont=dict(size=9, color=TEXT),
         marker=dict(line=dict(color=PANEL, width=1)),
         hovertemplate="%{label}<br>%{value:.1f} km<br>%{percent}<extra></extra>",
+        showlegend=False,
     )
+
+    annotations = [dict(text="Sport", x=0.275, y=0.5, xref="paper", yref="paper", showarrow=False, font=dict(size=9, color=MUTED))]
+    shapes = []
+    max_rows = min(6, len(temp))
+    start_y = 0.76
+    step = 0.135 if max_rows <= 5 else 0.115
+    for i, row in temp.head(max_rows).iterrows():
+        y = start_y - i * step
+        sport = str(row["sport_grouped"])
+        color = color_map.get(sport, MUTED)
+        shapes.append(
+            dict(
+                type="circle",
+                xref="paper",
+                yref="paper",
+                x0=0.635,
+                x1=0.660,
+                y0=y - 0.018,
+                y1=y + 0.018,
+                fillcolor=color,
+                line=dict(color=color, width=0),
+            )
+        )
+        annotations.append(dict(text=sport, x=0.682, y=y, xref="paper", yref="paper", showarrow=False, xanchor="left", font=dict(size=9, color=TEXT)))
+        annotations.append(dict(text=f"{row['pct']:.0f}%", x=0.985, y=y, xref="paper", yref="paper", showarrow=False, xanchor="right", font=dict(size=10, color=TEXT)))
+
     fig.update_layout(
-        margin=dict(l=0, r=0, t=0, b=0),
-        legend=dict(
-            orientation="v",
-            yanchor="middle",
-            y=0.52,
-            xanchor="left",
-            x=0.68,
-            bgcolor=TRANSPARENT,
-            font=dict(size=8, color=MUTED),
-            title_text="",
-            itemwidth=30,
-            traceorder="normal",
-        ),
-        annotations=[dict(text="Sport", x=0.31, y=0.5, showarrow=False, font=dict(size=9, color=MUTED))],
+        margin=dict(l=0, r=4, t=0, b=0),
+        showlegend=False,
+        annotations=annotations,
+        shapes=shapes,
     )
-    return plot_style(fig, height=252)
+    return plot_style(fig, height=252, show_legend=False)
 
 def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int) -> go.Figure:
     temp = cumulative_metric_df.copy()

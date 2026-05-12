@@ -412,11 +412,7 @@ def render_header(
     eyebrow: str = "Personal analytics",
     badges: list[str] | None = None,
 ) -> None:
-    badges_html = "".join(
-        f"<span class='sd-pill secondary'>{_esc(badge)}</span>"
-        for badge in (badges or [])
-        if "div" not in str(badge).lower()
-    )
+    badges_html = ""
     st.markdown(
         f"""
         <div class="sd-hero">
