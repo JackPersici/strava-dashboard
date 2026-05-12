@@ -4,7 +4,15 @@ import streamlit as st
 
 from app.charts import cumulative_trend_chart, monthly_distance_chart, sport_donut_chart
 from app.formatters import fmt_h, fmt_int, fmt_km, fmt_m, fmt_pct
-from app.theme import card_html, insight_row_html, mini_stat_html, overview_hero, section_close, section_open
+from app.theme import (
+    card_html,
+    insight_row_html,
+    mini_stat_html,
+    overview_topline,
+    section_close,
+    section_header_html,
+    section_open,
+)
 
 
 def _empty(message: str = "Nessun dato disponibile.") -> None:
@@ -17,6 +25,11 @@ def _metric_delta(value: float) -> str:
 
 def _plot_config() -> dict:
     return {"displayModeBar": False, "responsive": True}
+
+
+def _delta_badge(value: float) -> str:
+    klass = "green" if value >= 0 else "red"
+    return f"<span class='sd-pill {klass}'>{fmt_pct(value)} vs anno scorso</span>"
 
 
 def render_overview(data: dict) -> None:
@@ -34,16 +47,17 @@ def render_overview(data: dict) -> None:
     main_sport = data["primary_sport"]
     consistency = data["consistency"]
 
-    # Header locale compatto. Se nel main esiste già un header globale,
-    # questo resta abbastanza leggero da non creare un doppione visivo pesante.
+    # =====================================================
+    # COMPACT PAGE CONTEXT - avoids the duplicated hero effect
+    # =====================================================
     st.markdown(
-        overview_hero(
+        overview_topline(
             "Overview allenamenti",
-            "Progressi, volumi e segnali principali del tuo anno sportivo.",
+            "Volumi, trend e segnali principali dell'anno sportivo.",
             [
-                ("Anno", str(distance_compare["current_year"])),
-                ("Distanza", fmt_km(kpis["distance_km"])),
-                ("Delta", fmt_pct(distance_compare["delta_pct"])),
+                f"{distance_compare['current_year']}",
+                f"{fmt_km(kpis['distance_km'])} totali",
+                f"{fmt_pct(distance_compare['delta_pct'])}",
             ],
         ),
         unsafe_allow_html=True,
@@ -65,17 +79,16 @@ def render_overview(data: dict) -> None:
     # =====================================================
     # MAIN GRID
     # =====================================================
-    left, right = st.columns([2.08, 1.0], gap="medium")
+    left, right = st.columns([2.15, 1.0], gap="medium")
 
     with left:
-        section_open("Andamento mensile", "Distanza aggregata per mese e sport")
+        st.markdown(section_header_html("Andamento mensile", "Distanza aggregata per mese e sport"), unsafe_allow_html=True)
         if monthly_sport_df.empty:
             _empty()
         else:
             st.plotly_chart(monthly_distance_chart(monthly_sport_df), use_container_width=True, config=_plot_config())
-        section_close()
 
-        section_open("Trend vs anno scorso", "Confronto cumulativo progressivo")
+        st.markdown(section_header_html("Trend vs anno scorso", "Confronto cumulativo progressivo"), unsafe_allow_html=True)
         if cumulative_metric_df.empty:
             _empty("Nessun confronto disponibile.")
         else:
@@ -85,18 +98,16 @@ def render_overview(data: dict) -> None:
                 config=_plot_config(),
             )
             st.markdown(
-                f"<span class='sd-pill'>Sei a {fmt_pct(distance_compare['delta_pct'])} rispetto al {distance_compare['previous_year']}</span>",
+                f"<div style='margin-top:-2px;margin-bottom:4px;'>{_delta_badge(distance_compare['delta_pct'])}</div>",
                 unsafe_allow_html=True,
             )
-        section_close()
 
     with right:
-        section_open("Distribuzione sport", "Peso relativo per distanza")
+        st.markdown(section_header_html("Distribuzione sport", "Peso relativo per distanza"), unsafe_allow_html=True)
         if sport_summary_df.empty:
             _empty()
         else:
             st.plotly_chart(sport_donut_chart(sport_summary_df), use_container_width=True, config=_plot_config())
-        section_close()
 
         section_open("Insights", "Segnali rapidi")
         st.markdown(insight_row_html("Sport principale", main_sport["sport"], f"{main_sport['pct']:.0f}% distanza"), unsafe_allow_html=True)
@@ -114,7 +125,7 @@ def render_overview(data: dict) -> None:
     # =====================================================
     # BOTTOM GRID
     # =====================================================
-    b1, b2 = st.columns([1.3, 1.0], gap="medium")
+    b1, b2 = st.columns([1.28, 1.0], gap="medium")
 
     with b1:
         section_open("Migliori performance", "Record e attività più rilevanti")
