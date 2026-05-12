@@ -192,7 +192,7 @@ def inject_global_css() -> None:
         }}
         .sd-hero-title, .sd-app-title, .sd-page-title {{
             color: {COLORS['text']};
-            font-size: clamp(1.18rem, 2.0vw, 1.72rem);
+            font-size: clamp(1.16rem, 1.9vw, 1.60rem);
             line-height: 1.02;
             font-weight: 840;
             letter-spacing: -0.045em;
@@ -206,7 +206,7 @@ def inject_global_css() -> None:
             justify-content: space-between;
             align-items: flex-end;
             gap: 16px;
-            margin: 0 0 6px;
+            margin: 0 0 10px;
         }}
         .sd-page-kicker {{
             color: {COLORS['accent_2']};
@@ -284,7 +284,7 @@ def inject_global_css() -> None:
             align-items: flex-end;
             justify-content: space-between;
             gap: 10px;
-            margin: 0 0 6px;
+            margin: 8px 0 8px;
         }}
         .sd-section-title h3 {{
             color: {COLORS['text']};
@@ -296,13 +296,13 @@ def inject_global_css() -> None:
         .sd-section-title p {{ color: {COLORS['muted']}; font-size: .73rem; margin: 3px 0 0; }}
 
         .sd-card, .card {{
-            background: rgba(12,23,38,0.64);
+            background: rgba(12,23,38,0.68);
             border: 1px solid {COLORS['border']};
             border-radius: 15px;
             padding: 10px;
             box-shadow: 0 8px 22px rgba(0,0,0,0.10);
         }}
-        .sd-chart-card {{ padding: 9px 10px 5px; }}
+        .sd-chart-card {{ padding: 10px 11px 7px; }}
         .sd-card.flat {{ background: rgba(9,21,37,0.70); box-shadow: none; }}
 
         /* Streamlit plot containers get a card feel even if HTML wrappers are not respected */
@@ -364,12 +364,12 @@ def inject_global_css() -> None:
 
 
         /* Step 4 premium polish overrides */
-        .sd-page-title {{ font-size: clamp(1.28rem, 2.0vw, 1.62rem); font-weight: 780; letter-spacing: -0.04em; }}
+        .sd-page-title {{ font-size: clamp(1.18rem, 1.65vw, 1.46rem); font-weight: 760; letter-spacing: -0.035em; }}
         .sd-page-kicker, .sd-hero-eyebrow, .sd-eyebrow {{ font-weight: 760; letter-spacing: .17em; }}
         .sd-section-title h3 {{ font-size: .84rem; font-weight: 720; letter-spacing: -0.018em; }}
         .sd-section-title p {{ font-size: .70rem; opacity: .92; }}
-        .kpi-card {{ min-height: 64px; }}
-        .kpi-value {{ text-shadow: none; }}
+        .kpi-card {{ min-height: 76px; padding: 11px 12px 10px; }}
+        .kpi-value {{ text-shadow: none; margin-top: 7px; }}
         .sd-pill {{ padding: 3px 8px; font-weight: 720; }}
         .mini-value, .insight-main, .insight-value {{ font-weight: 760; }}
         .mini-stat, .insight-row {{ box-shadow: none; }}

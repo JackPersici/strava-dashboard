@@ -71,7 +71,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     )
     fig.update_traces(marker_line_width=0, opacity=0.86, hovertemplate="%{x}<br>%{y:.1f} km<extra></extra>")
     fig.update_layout(bargap=0.46)
-    return plot_style(fig, height=238)
+    return plot_style(fig, height=246)
 
 
 def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
@@ -95,7 +95,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         legend=dict(orientation="h", y=1.04, x=0, font=dict(size=8, color=MUTED), title_text=""),
         annotations=[dict(text="Sport", x=0.5, y=0.5, showarrow=False, font=dict(size=9, color=MUTED))],
     )
-    return plot_style(fig, height=208)
+    return plot_style(fig, height=194)
 
 
 def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int) -> go.Figure:
@@ -115,7 +115,7 @@ def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int
         labels={"month_label": "", "cumulative": "totale", "year_str": ""},
     )
     fig.update_traces(line=dict(width=2.0), marker=dict(size=4.8), hovertemplate="%{x}<br>%{y:.1f}<extra></extra>")
-    return plot_style(fig, height=238)
+    return plot_style(fig, height=246)
 
 
 def monthly_trend_chart(trend_metric_df: pd.DataFrame, selected_metric: str, current_year: int) -> go.Figure:

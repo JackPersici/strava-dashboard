@@ -76,6 +76,8 @@ def render_overview(data: dict) -> None:
     with c4:
         st.markdown(card_html("Dislivello", fmt_m(kpis["elevation_m"]), _metric_delta(elev_compare["delta_pct"])), unsafe_allow_html=True)
 
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+
     # =====================================================
     # MAIN GRID
     # =====================================================
