@@ -55,22 +55,22 @@ def plot_style(fig: go.Figure, height: int = 270, show_legend: bool = True) -> g
     )
     return fig
 
-
-def _legend_circle_traces(fig: go.Figure, color_map: dict) -> go.Figure:
-    """Replace Plotly's bar-square legend with compact circular markers."""
-    existing_names = []
+def _legend_circle_traces(fig: go.Figure, color_map: dict[str, str]) -> go.Figure:
+    """Use invisible scatter traces so Plotly legends render circular markers."""
+    names: list[str] = []
     for trace in fig.data:
-        if getattr(trace, "name", None) and trace.name not in existing_names:
-            existing_names.append(trace.name)
+        name = getattr(trace, "name", None)
+        if name and name not in names:
+            names.append(str(name))
         trace.showlegend = False
 
-    for name in existing_names:
+    for name in names:
         fig.add_trace(
             go.Scatter(
                 x=[None],
                 y=[None],
                 mode="markers",
-                name=str(name),
+                name=name,
                 marker=dict(size=8, color=color_map.get(name, MUTED), symbol="circle"),
                 hoverinfo="skip",
                 showlegend=True,
@@ -84,15 +84,15 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     if temp.empty:
         return go.Figure()
 
-    # Keep year/month granularity: aggregating only by month would mix different
-    # years and make Jan-Dec totals misleading when "Tutti gli anni" is selected.
+    # Keep year/month granularity. Grouping only by month would mix different
+    # years when "Tutti gli anni" is selected.
     temp = (
         temp.groupby(["year", "month_num", "month", "sport_grouped"], as_index=False, dropna=False)
         .agg(distance_km=("distance_km", "sum"))
         .sort_values(["year", "month_num"])
     )
     temp["year"] = temp["year"].astype(int)
-    temp["period_label"] = temp["month"].astype(str) + " " + temp["year"].astype(str)
+    temp["period_label"] = temp["month"].astype(str) + "<br>" + temp["year"].astype(str)
     period_order = (
         temp[["year", "month_num", "period_label"]]
         .drop_duplicates()
@@ -114,10 +114,9 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     )
     fig.update_traces(marker_line_width=0, opacity=0.86, hovertemplate="%{x}<br>%{y:.1f} km<extra></extra>")
     fig.update_layout(bargap=0.46)
-    fig.update_xaxes(categoryorder="array", categoryarray=period_order)
+    fig.update_xaxes(categoryorder="array", categoryarray=period_order, tickangle=0)
     fig = _legend_circle_traces(fig, color_map)
     return plot_style(fig, height=252)
-
 
 def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
     temp = sport_summary_df.copy()
@@ -138,7 +137,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         color_discrete_map=color_map,
     )
     fig.update_traces(
-        domain={"x": [0.00, 0.55], "y": [0.06, 0.94]},
+        domain={"x": [0.00, 0.50], "y": [0.08, 0.92]},
         textinfo="percent",
         textposition="inside",
         textfont=dict(size=9, color=TEXT),
@@ -147,7 +146,9 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         showlegend=False,
     )
 
-    annotations = [dict(text="Sport", x=0.275, y=0.5, xref="paper", yref="paper", showarrow=False, font=dict(size=9, color=MUTED))]
+    annotations = [
+        dict(text="Sport", x=0.25, y=0.50, xref="paper", yref="paper", showarrow=False, font=dict(size=9, color=MUTED))
+    ]
     shapes = []
     max_rows = min(6, len(temp))
     start_y = 0.76
@@ -161,16 +162,38 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
                 type="circle",
                 xref="paper",
                 yref="paper",
-                x0=0.635,
-                x1=0.660,
+                x0=0.585,
+                x1=0.610,
                 y0=y - 0.018,
                 y1=y + 0.018,
                 fillcolor=color,
                 line=dict(color=color, width=0),
             )
         )
-        annotations.append(dict(text=sport, x=0.682, y=y, xref="paper", yref="paper", showarrow=False, xanchor="left", font=dict(size=9, color=TEXT)))
-        annotations.append(dict(text=f"{row['pct']:.0f}%", x=0.985, y=y, xref="paper", yref="paper", showarrow=False, xanchor="right", font=dict(size=10, color=TEXT)))
+        annotations.append(
+            dict(
+                text=sport,
+                x=0.632,
+                y=y,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                xanchor="left",
+                font=dict(size=9, color=TEXT),
+            )
+        )
+        annotations.append(
+            dict(
+                text=f"{row['pct']:.0f}%",
+                x=0.985,
+                y=y,
+                xref="paper",
+                yref="paper",
+                showarrow=False,
+                xanchor="right",
+                font=dict(size=10, color=TEXT),
+            )
+        )
 
     fig.update_layout(
         margin=dict(l=0, r=4, t=0, b=0),
