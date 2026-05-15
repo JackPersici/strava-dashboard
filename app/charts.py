@@ -158,6 +158,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         tickfont=dict(size=9, color="#AFC0D2"),
         fixedrange=True,
         showticklabels=False,
+        range=[-0.5, max(0.5, len(period_order) - 0.5)],
     )
     fig.update_yaxes(fixedrange=True)
     fig.update_layout(
@@ -165,8 +166,8 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         bargroupgap=0.10,
         showlegend=False,
     )
-    fig = plot_style(fig, height=160, show_legend=False)
-    fig.update_layout(margin=dict(l=48, r=12, t=2, b=8))
+    fig = plot_style(fig, height=145, show_legend=False)
+    fig.update_layout(margin=dict(l=48, r=12, t=0, b=0))
     fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
     fig.update_xaxes(automargin=True)
     return fig
@@ -263,7 +264,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         showlegend=False,
         annotations=annotations,
     )
-    return plot_style(fig, height=316, show_legend=False)
+    return plot_style(fig, height=288, show_legend=False)
 
 def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int) -> go.Figure:
     temp = cumulative_metric_df.copy()

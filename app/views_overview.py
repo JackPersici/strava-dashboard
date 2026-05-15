@@ -19,7 +19,7 @@ from app.theme import (
 )
 
 
-PANEL_HEIGHT = 390
+PANEL_HEIGHT = 365
 
 
 def _esc(value: object) -> str:
@@ -80,7 +80,7 @@ def _month_axis_labels_html(df) -> str:
             labels.append(f"<span>{month_names[month_num - 1]}<br>{year}</span>")
 
     cols = max(1, len(labels))
-    return f"<div class='sd-custom-xaxis' style='grid-template-columns: repeat({cols}, 34px);'>" + "".join(labels) + "</div>"
+    return f"<div class='sd-custom-xaxis' style='grid-template-columns: repeat({cols}, minmax(0, 1fr));'>" + "".join(labels) + "</div>"
 
 
 def _plotly_fragment(fig, height: int) -> str:
@@ -94,7 +94,7 @@ def _plotly_fragment(fig, height: int) -> str:
 
 
 def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 160
+    chart_height = 145
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -106,7 +106,7 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
                 border: 1px solid rgba(216,230,255,0.095);
                 border-radius: 18px;
                 background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.055), transparent 18rem), rgba(10,20,34,0.92);
-                padding: 22px 24px 16px 24px;
+                padding: 20px 24px 13px 24px;
                 overflow: hidden;
                 color: #F7FAFF;
                 font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
@@ -118,10 +118,10 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
             .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
             .sd-scroll-shell {{
                 width: 100%;
-                height: 224px;
+                height: 203px;
                 overflow-x: auto;
                 overflow-y: hidden;
-                padding-bottom: 18px;
+                padding-bottom: 15px;
                 box-sizing: border-box;
                 scrollbar-width: thin;
                 scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
@@ -129,13 +129,13 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
             .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 58}px;}}
+            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 52}px;}}
             .sd-custom-xaxis {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
                 margin-left: 48px;
                 margin-right: 12px;
-                margin-top: 2px;
+                margin-top: 0;
                 color: #AFC0D2;
                 font-size: 9px;
                 line-height: 1.15;
@@ -158,7 +158,7 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
 
 
 def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 286
+    chart_height = 258
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -170,7 +170,7 @@ def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
                 border: 1px solid rgba(216,230,255,0.095);
                 border-radius: 18px;
                 background: radial-gradient(circle at 35% 0%, rgba(125,183,255,0.050), transparent 18rem), rgba(10,20,34,0.92);
-                padding: 22px 24px 16px 24px;
+                padding: 20px 24px 13px 24px;
                 overflow: hidden;
                 color: #F7FAFF;
                 font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
