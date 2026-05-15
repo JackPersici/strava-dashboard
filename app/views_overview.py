@@ -320,6 +320,7 @@ def _annual_goal_values(data: dict, kpis: dict) -> tuple[float, float, float]:
 
 def _render_cumulative_card(fig, delta_pct: float, previous_year: int, height: int = 258) -> None:
     chart_height = 168
+    trend_badge_class = "positive" if delta_pct >= 0 else "negative"
     fig.update_layout(
         height=chart_height,
         margin=dict(l=34, r=12, t=8, b=22),
@@ -346,16 +347,19 @@ def _render_cumulative_card(fig, delta_pct: float, previous_year: int, height: i
             .sd-bottom-sub {{font-size:.70rem;color:#AFC0D2;margin-bottom:5px;}}
             .sd-trend-chart {{height:{chart_height}px;margin-top:2px;}}
             .sd-trend-badge {{
-                display:inline-flex;align-items:center;border:1px solid rgba(252,76,2,.65);color:#FFB16B;
-                border-radius:10px;padding:6px 9px;font-weight:760;font-size:.68rem;background:rgba(252,76,2,.08);margin-top:0;
+                display:inline-flex;align-items:center;
+                border-radius:10px;padding:6px 9px;font-weight:760;font-size:.68rem;margin-top:0;
             }}
-            .sd-trend-badge b {{color:#FC4C02;margin-right:4px;}}
+            .sd-trend-badge.positive {{border:1px solid rgba(34,197,94,.48);color:#BBF7D0;background:rgba(34,197,94,.10);}}
+            .sd-trend-badge.negative {{border:1px solid rgba(239,68,68,.48);color:#FECACA;background:rgba(239,68,68,.10);}}
+            .sd-trend-badge.positive b {{color:#86EFAC;margin-right:4px;}}
+            .sd-trend-badge.negative b {{color:#FDA4AF;margin-right:4px;}}
         </style>
         <div class="sd-bottom-card">
             <div class="sd-bottom-title">Trend vs anno scorso</div>
             <div class="sd-bottom-sub">Confronto cumulativo progressivo</div>
             <div class="sd-trend-chart">{html_fragment}</div>
-            <div class="sd-trend-badge"><b>{fmt_pct(delta_pct)}</b> rispetto al {previous_year}</div>
+            <div class="sd-trend-badge {trend_badge_class}"><b>{fmt_pct(delta_pct)}</b> rispetto al {previous_year}</div>
         </div>
         ''',
         height=height,
@@ -686,13 +690,13 @@ def render_overview(data: dict) -> None:
     with right:
         st.markdown(_key_numbers_html(data, kpis), unsafe_allow_html=True)
 
-    st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
     # =====================================================
     # ROW 2: trend + performance + zones aligned
     # =====================================================
     bottom_height = 258
-    r2_c1, r2_c2, r2_c3 = st.columns([1.64, 0.80, 0.94], gap="small")
+    r2_c1, r2_c2, r2_c3 = st.columns([1.64, 0.92, 1.14], gap="small")
 
     with r2_c1:
         if cumulative_metric_df.empty:
