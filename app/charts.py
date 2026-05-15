@@ -166,7 +166,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         bargroupgap=0.10,
         showlegend=False,
     )
-    fig = plot_style(fig, height=145, show_legend=False)
+    fig = plot_style(fig, height=120, show_legend=False)
     fig.update_layout(margin=dict(l=48, r=12, t=0, b=0))
     fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
     fig.update_xaxes(automargin=True)
@@ -192,7 +192,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         color_discrete_map=color_map,
     )
     fig.update_traces(
-        domain={"x": [0.00, 0.52], "y": [0.03, 0.97]},
+        domain={"x": [0.00, 0.50], "y": [0.06, 0.94]},
         textinfo="none",
         texttemplate=None,
         textposition="none",
@@ -204,12 +204,12 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
     annotations = [
         dict(
             text=f"<b>{total:,.1f}</b><br><span style='font-size:10px'>km totali</span>",
-            x=0.26,
+            x=0.25,
             y=0.50,
             xref="paper",
             yref="paper",
             showarrow=False,
-            font=dict(size=16, color=TEXT),
+            font=dict(size=14, color=TEXT),
             align="center",
             xanchor="center",
             yanchor="middle",
@@ -226,7 +226,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         annotations.extend([
             dict(
                 text="●",
-                x=0.575,
+                x=0.555,
                 y=y,
                 xref="paper",
                 yref="paper",
@@ -237,14 +237,14 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
             ),
             dict(
                 text=sport,
-                x=0.620,
+                x=0.600,
                 y=y,
                 xref="paper",
                 yref="paper",
                 showarrow=False,
                 xanchor="left",
                 yanchor="middle",
-                font=dict(size=8, color=TEXT),
+                font=dict(size=7, color=TEXT),
             ),
             dict(
                 text=f"{row['pct']:.1f}%",
@@ -255,7 +255,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
                 showarrow=False,
                 xanchor="right",
                 yanchor="middle",
-                font=dict(size=9, color=TEXT),
+                font=dict(size=8, color=TEXT),
             ),
         ])
 
@@ -264,7 +264,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         showlegend=False,
         annotations=annotations,
     )
-    return plot_style(fig, height=288, show_legend=False)
+    return plot_style(fig, height=230, show_legend=False)
 
 def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int) -> go.Figure:
     temp = cumulative_metric_df.copy()

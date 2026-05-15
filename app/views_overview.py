@@ -19,7 +19,7 @@ from app.theme import (
 )
 
 
-PANEL_HEIGHT = 365
+PANEL_HEIGHT = 345
 
 
 def _esc(value: object) -> str:
@@ -94,7 +94,7 @@ def _plotly_fragment(fig, height: int) -> str:
 
 
 def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 145
+    chart_height = 120
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -118,7 +118,7 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
             .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
             .sd-scroll-shell {{
                 width: 100%;
-                height: 203px;
+                height: 184px;
                 overflow-x: auto;
                 overflow-y: hidden;
                 padding-bottom: 15px;
@@ -129,7 +129,7 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
             .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 52}px;}}
+            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 48}px;}}
             .sd-custom-xaxis {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
@@ -158,7 +158,7 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
 
 
 def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 258
+    chart_height = 230
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -317,7 +317,7 @@ def _inject_overview_final_css() -> None:
         .sd-compact-head p {
             margin: 10px 0 14px;
             color: #AFC0D2;
-            font-size: .76rem;
+            font-size: .72rem;
         }
         .sd-compact-body .mini-stat,
         .sd-compact-body .insight-row {
@@ -384,13 +384,14 @@ def _inject_overview_final_css() -> None:
             border: 1px solid rgba(216,230,255,0.105);
             border-radius: 18px;
             background: radial-gradient(circle at 15% 0%, rgba(125,183,255,0.055), transparent 17rem), rgba(10,20,34,0.82);
-            padding: 13px 14px 10px;
-            min-height: 316px;
+            padding: 13px 13px 10px;
+            height: 345px;
+            min-height: 345px;
             box-sizing: border-box;
         }
         .sd-key-title {
             color: #F7FAFF;
-            font-size: .76rem;
+            font-size: .72rem;
             line-height: 1;
             text-transform: uppercase;
             letter-spacing: .06em;
@@ -401,17 +402,17 @@ def _inject_overview_final_css() -> None:
         .sd-key-list { display: grid; grid-template-columns: 1fr; }
         .sd-key-row {
             display: grid;
-            grid-template-columns: 38px minmax(0, 1fr);
-            column-gap: 12px;
+            grid-template-columns: 36px minmax(0, 1fr);
+            column-gap: 10px;
             align-items: center;
             min-height: 58px;
-            padding: 9px 0;
+            padding: 8px 0;
             border-bottom: 1px solid rgba(216,230,255,0.075);
         }
         .sd-key-row:last-child { border-bottom: 0; }
         .sd-key-icon {
-            width: 34px;
-            height: 34px;
+            width: 32px;
+            height: 32px;
             border-radius: 11px;
             display: inline-flex;
             align-items: center;
@@ -426,20 +427,20 @@ def _inject_overview_final_css() -> None:
         .sd-key-copy { min-width: 0; }
         .sd-key-value {
             color: #F7FAFF;
-            font-size: 1.06rem;
+            font-size: 1.00rem;
             font-weight: 860;
             letter-spacing: -0.035em;
             line-height: 1.05;
         }
         .sd-key-label {
             color: #D8E6F6;
-            font-size: .76rem;
+            font-size: .72rem;
             line-height: 1.15;
             margin-top: 2px;
         }
         .sd-key-sub {
             color: #AFC0D2;
-            font-size: .68rem;
+            font-size: .64rem;
             line-height: 1.15;
             margin-top: 2px;
         }
@@ -493,9 +494,9 @@ def render_overview(data: dict) -> None:
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
     # =====================================================
-    # ROW 1: Monthly trend + sport distribution
+    # ROW 1: Monthly trend + sport distribution + key numbers
     # =====================================================
-    left, right = st.columns([1.56, 1.18], gap="medium")
+    left, middle, right = st.columns([1.64, 1.24, 0.82], gap="small")
 
     with left:
         if monthly_sport_df.empty:
@@ -505,18 +506,21 @@ def render_overview(data: dict) -> None:
             fig = monthly_distance_chart(monthly_sport_df)
             month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
             axis_labels_html = _month_axis_labels_html(monthly_sport_df)
-            _render_monthly_card(fig, legend_html, axis_labels_html, min_width=max(680, month_count * 34), height=PANEL_HEIGHT)
+            _render_monthly_card(fig, legend_html, axis_labels_html, min_width=max(640, month_count * 34), height=PANEL_HEIGHT)
 
-    with right:
+    with middle:
         if sport_summary_df.empty:
             _empty()
         else:
             _render_donut_card(sport_donut_chart(sport_summary_df), height=PANEL_HEIGHT)
 
+    with right:
+        st.markdown(_key_numbers_html(data, kpis), unsafe_allow_html=True)
+
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
     # =====================================================
-    # ROW 2: compact cumulative trend + compact right rail
+    # ROW 2: compact cumulative trend + quick signals
     # =====================================================
     t_left, t_right = st.columns([1.82, 1.0], gap="medium")
 
@@ -536,7 +540,13 @@ def render_overview(data: dict) -> None:
             )
 
     with t_right:
-        st.markdown(_key_numbers_html(data, kpis), unsafe_allow_html=True)
+        quick_rows = "".join([
+            insight_row_html("Sport principale", str(main_sport.get("sport", "-")), f"{main_sport.get('pct', 0):.0f}% distanza"),
+            insight_row_html("Giorno preferito", str(fav_day.get("weekday", "-")), f"{fav_day.get('pct', 0):.0f}% attività"),
+            insight_row_html("Settimana top", str(active_week.get("week", "-")), f"{active_week.get('activities', 0)} attività"),
+            insight_row_html("Costanza", f"{consistency:.0f}/100", "presenza settimanale"),
+        ])
+        st.markdown(_compact_overview_card("Segnali rapidi", "Insight principali", quick_rows, height=246), unsafe_allow_html=True)
 
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
