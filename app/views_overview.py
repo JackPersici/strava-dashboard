@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -151,6 +152,88 @@ def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
     )
 
 
+
+def _activity_dataframe_from_data(data: dict) -> pd.DataFrame | None:
+    """Return the most detailed activity dataframe if the app passes it.
+
+    Older versions of the overview received only aggregates, so this helper is
+    intentionally defensive: if no activity-level dataframe is available, the
+    streak widget degrades gracefully instead of breaking the dashboard.
+    """
+    for key in ("filtered_df", "activities_df", "activity_df", "df", "raw_df"):
+        value = data.get(key)
+        if isinstance(value, pd.DataFrame) and not value.empty:
+            return value
+    return None
+
+
+def _current_training_week_streak(data: dict) -> int | None:
+    df = _activity_dataframe_from_data(data)
+    if df is None:
+        return None
+
+    date_col = None
+    for candidate in ("start_date_local", "start_date", "day"):
+        if candidate in df.columns:
+            date_col = candidate
+            break
+    if date_col is None:
+        return None
+
+    dates = pd.to_datetime(df[date_col], errors="coerce").dropna()
+    if dates.empty:
+        return None
+
+    # Weekly streak: count consecutive ISO-like training weeks ending at the
+    # latest week present in the filtered data. This mirrors a Strava-style
+    # training consistency streak while avoiding assumptions about future weeks.
+    weeks = sorted(dates.dt.to_period("W-MON").dropna().unique())
+    if not weeks:
+        return None
+
+    streak = 1
+    cursor = weeks[-1]
+    week_set = set(weeks)
+    while (cursor - 1) in week_set:
+        streak += 1
+        cursor = cursor - 1
+    return streak
+
+
+def _key_numbers_html(data: dict, kpis: dict) -> str:
+    streak = _current_training_week_streak(data)
+    streak_value = "-" if streak is None else str(streak)
+    streak_subtitle = "settimane consecutive" if streak != 1 else "settimana consecutiva"
+
+    rows = [
+        ("🔥", "fire", streak_value, "streak attuale", streak_subtitle),
+        ("🕘", "time", fmt_h(kpis.get("avg_time_h", 0.0)), "media attività", "tempo per attività"),
+        ("🗺️", "distance", fmt_km(kpis.get("avg_distance_km", 0.0)), "media distanza", "per attività"),
+        ("⛰️", "elevation", fmt_m(kpis.get("avg_elevation_m", 0.0)), "media dislivello", "per attività"),
+    ]
+
+    body = "".join(
+        f"""
+        <div class="sd-key-row">
+            <div class="sd-key-icon {klass}">{icon}</div>
+            <div class="sd-key-copy">
+                <div class="sd-key-value">{_esc(value)}</div>
+                <div class="sd-key-label">{_esc(label)}</div>
+                <div class="sd-key-sub">{_esc(subtitle)}</div>
+            </div>
+        </div>
+        """
+        for icon, klass, value, label, subtitle in rows
+    )
+
+    return f"""
+    <div class="sd-key-card">
+        <div class="sd-key-title">I tuoi numeri chiave</div>
+        <div class="sd-key-list">{body}</div>
+    </div>
+    """
+
+
 def _zone_progress_html(row) -> str:
     zone = _esc(row.get("zone", "Zona"))
     activities = float(row.get("activities_pct", 0.0))
@@ -266,6 +349,71 @@ def _inject_overview_final_css() -> None:
             border-radius: 999px;
             background: linear-gradient(90deg, rgba(252,76,2,.86), rgba(139,92,246,.95));
         }
+
+        .sd-key-card {
+            border: 1px solid rgba(216,230,255,0.105);
+            border-radius: 18px;
+            background: radial-gradient(circle at 15% 0%, rgba(125,183,255,0.055), transparent 17rem), rgba(10,20,34,0.82);
+            padding: 13px 14px 10px;
+            min-height: 316px;
+            box-sizing: border-box;
+        }
+        .sd-key-title {
+            color: #F7FAFF;
+            font-size: .76rem;
+            line-height: 1;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            font-weight: 860;
+            padding: 2px 0 12px;
+            border-bottom: 1px solid rgba(216,230,255,0.08);
+        }
+        .sd-key-list { display: grid; grid-template-columns: 1fr; }
+        .sd-key-row {
+            display: grid;
+            grid-template-columns: 38px minmax(0, 1fr);
+            column-gap: 12px;
+            align-items: center;
+            min-height: 58px;
+            padding: 9px 0;
+            border-bottom: 1px solid rgba(216,230,255,0.075);
+        }
+        .sd-key-row:last-child { border-bottom: 0; }
+        .sd-key-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .sd-key-icon.fire { background: rgba(252,76,2,0.15); color: #FF8A3D; }
+        .sd-key-icon.time { background: rgba(14,165,233,0.15); color: #38BDF8; }
+        .sd-key-icon.distance { background: rgba(34,197,94,0.14); color: #4ADE80; }
+        .sd-key-icon.elevation { background: rgba(139,92,246,0.16); color: #A78BFA; }
+        .sd-key-copy { min-width: 0; }
+        .sd-key-value {
+            color: #F7FAFF;
+            font-size: 1.06rem;
+            font-weight: 860;
+            letter-spacing: -0.035em;
+            line-height: 1.05;
+        }
+        .sd-key-label {
+            color: #D8E6F6;
+            font-size: .76rem;
+            line-height: 1.15;
+            margin-top: 2px;
+        }
+        .sd-key-sub {
+            color: #AFC0D2;
+            font-size: .68rem;
+            line-height: 1.15;
+            margin-top: 2px;
+        }
+
         </style>
         """,
         unsafe_allow_html=True,
@@ -357,26 +505,7 @@ def render_overview(data: dict) -> None:
             )
 
     with t_right:
-        insights_html = "".join([
-            insight_row_html("Sport principale", main_sport["sport"], f"{main_sport['pct']:.0f}% distanza"),
-            insight_row_html("Giorno preferito", fav_day["weekday"], f"{fav_day['pct']:.0f}% attività"),
-            insight_row_html("Settimana top", active_week.get("week", "-"), f"{active_week.get('activities', 0)} attività"),
-            insight_row_html("Costanza", f"{consistency:.0f}/100", "presenza settimanale"),
-        ])
-        averages_html = "".join([
-            mini_stat_html("Distanza media", fmt_km(kpis["avg_distance_km"]), "per attività"),
-            mini_stat_html("Tempo medio", fmt_h(kpis["avg_time_h"]), "per attività"),
-            mini_stat_html("Dislivello medio", fmt_m(kpis["avg_elevation_m"]), "per attività"),
-        ])
-        st.markdown(
-            _compact_overview_card(
-                "Segnali rapidi",
-                "Insight e medie per singola attività",
-                f"<div class='sd-duo-stack'><div><div class='sd-duo-title'>Insights</div>{insights_html}</div><div><div class='sd-duo-title'>Medie</div>{averages_html}</div></div>",
-                height=316,
-            ),
-            unsafe_allow_html=True,
-        )
+        st.markdown(_key_numbers_html(data, kpis), unsafe_allow_html=True)
 
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
