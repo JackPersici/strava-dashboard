@@ -115,7 +115,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
             })
     periods_df = pd.DataFrame(periods)
 
-    preferred_order = ["Ciclismo", "Ride", "VirtualRide", "GravelRide", "Altri"]
+    preferred_order = ["Ciclismo", "Ride", "VirtualRide", "GravelRide", "Corsa", "Run", "TrailRun", "Escursionismo", "Hike", "Altri"]
     available = [str(x) for x in temp["sport_grouped"].dropna().unique().tolist()]
     sports = [s for s in preferred_order if s in available] + [s for s in available if s not in preferred_order]
     if not sports:
@@ -280,6 +280,9 @@ def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int
         labels={"month_label": "", "cumulative": "totale", "year_str": ""},
     )
     fig.update_traces(line=dict(width=2.0), marker=dict(size=4.8), hovertemplate="%{x}<br>%{y:.1f}<extra></extra>")
+    for trace in fig.data:
+        if str(getattr(trace, "name", "")) != str(current_year):
+            trace.update(line=dict(dash="dash", width=2.0))
     return plot_style(fig, height=246)
 
 
