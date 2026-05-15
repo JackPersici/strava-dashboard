@@ -19,7 +19,7 @@ from app.theme import (
 )
 
 
-PANEL_HEIGHT = 430
+PANEL_HEIGHT = 398
 
 
 def _esc(value: object) -> str:
@@ -68,7 +68,7 @@ def _plotly_fragment(fig, height: int) -> str:
 
 
 def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 282
+    chart_height = 226
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -86,13 +86,13 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
                 font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
             }}
             .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin-bottom: 16px;}}
-            .sd-card-subtitle {{font-size: .82rem; color: #AFC0D2; margin-bottom: 18px;}}
-            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 22px; align-items: center; margin-bottom: 10px; font-size: .80rem; color: #EAF2FF;}}
+            .sd-card-subtitle {{font-size: .82rem; color: #AFC0D2; margin-bottom: 14px;}}
+            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 18px 20px; align-items: center; margin-bottom: 10px; font-size: .80rem; color: #EAF2FF;}}
             .sd-card-legend-item {{display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;}}
             .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
             .sd-scroll-shell {{
                 width: 100%;
-                height: 300px;
+                height: 244px;
                 overflow-x: auto;
                 overflow-y: hidden;
                 padding-bottom: 10px;
@@ -120,7 +120,7 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
 
 
 def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 318
+    chart_height = 286
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -466,7 +466,7 @@ def render_overview(data: dict) -> None:
             legend_html = _sport_legend_html(monthly_sport_df)
             fig = monthly_distance_chart(monthly_sport_df)
             month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
-            _render_monthly_card(fig, legend_html, min_width=max(700, month_count * 34), height=PANEL_HEIGHT)
+            _render_monthly_card(fig, legend_html, min_width=max(680, month_count * 30), height=PANEL_HEIGHT)
 
     with right:
         if sport_summary_df.empty:

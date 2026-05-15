@@ -79,7 +79,7 @@ def inject_global_css() -> None:
         }}
 
         .block-container {{
-            max-width: 1120px;
+            max-width: 1280px;
             padding-top: 0.35rem;
             padding-bottom: 1.65rem;
         }}

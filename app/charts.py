@@ -145,7 +145,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     fig.update_traces(
         marker_line_width=0,
         opacity=0.90,
-        width=0.26,
+        width=0.20,
         hovertemplate="%{customdata[0]}<br>%{customdata[1]}<br>%{y:.1f} km<extra></extra>",
         showlegend=False,
     )
@@ -159,7 +159,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     )
     fig.update_yaxes(fixedrange=True)
     fig.update_layout(
-        bargap=0.68,
+        bargap=0.74,
         bargroupgap=0.10,
         showlegend=False,
     )
@@ -189,7 +189,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
         color_discrete_map=color_map,
     )
     fig.update_traces(
-        domain={"x": [0.00, 0.50], "y": [0.08, 0.92]},
+        domain={"x": [0.00, 0.52], "y": [0.03, 0.97]},
         textinfo="none",
         texttemplate=None,
         textposition="none",
@@ -201,7 +201,7 @@ def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
     annotations = [
         dict(
             text=f"<b>{total:,.1f}</b><br><span style='font-size:10px'>km totali</span>",
-            x=0.25,
+            x=0.26,
             y=0.50,
             xref="paper",
             yref="paper",
