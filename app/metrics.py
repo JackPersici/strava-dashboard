@@ -289,13 +289,62 @@ def trend_monthly(df: pd.DataFrame, metric: str = "distance_km") -> pd.DataFrame
 
 
 def compare_vs_previous_year(df: pd.DataFrame, metric: str = "distance_km") -> dict:
+    """Compare current year-to-date with previous year-to-date.
+
+    The previous baseline is cut at the same month/day reached by the current
+    year in the available data, not at the full previous-year total. This keeps
+    KPI deltas meaningful during the season.
+    """
     if df.empty or df["year"].dropna().empty:
         return {"current": 0.0, "previous": 0.0, "delta_pct": 0.0, "current_year": date.today().year, "previous_year": date.today().year - 1}
 
     current_year = int(df["year"].max())
     previous_year = current_year - 1
-    current_total = float(df.loc[df["year"] == current_year, metric].sum())
-    prev_total = float(df.loc[df["year"] == previous_year, metric].sum())
+
+    temp = df.copy()
+
+    if "start_date_local" in temp.columns:
+        date_col = "start_date_local"
+    elif "start_date" in temp.columns:
+        date_col = "start_date"
+    elif "day" in temp.columns:
+        date_col = "day"
+    else:
+        date_col = None
+
+    if date_col is not None:
+        temp["_compare_date"] = pd.to_datetime(temp[date_col], errors="coerce")
+        current_dates = temp.loc[temp["year"] == current_year, "_compare_date"].dropna()
+    else:
+        temp["_compare_date"] = pd.NaT
+        current_dates = pd.Series(dtype="datetime64[ns]")
+
+    if current_dates.empty:
+        current_total = float(temp.loc[temp["year"] == current_year, metric].sum())
+        prev_total = float(temp.loc[temp["year"] == previous_year, metric].sum())
+    else:
+        latest_current_date = current_dates.max()
+        cutoff_month = int(latest_current_date.month)
+        cutoff_day = int(latest_current_date.day)
+
+        current_mask = (
+            (temp["year"] == current_year)
+            & temp["_compare_date"].notna()
+            & (temp["_compare_date"] <= latest_current_date)
+        )
+        previous_mask = (
+            (temp["year"] == previous_year)
+            & temp["_compare_date"].notna()
+            & (
+                (temp["_compare_date"].dt.month < cutoff_month)
+                | (
+                    (temp["_compare_date"].dt.month == cutoff_month)
+                    & (temp["_compare_date"].dt.day <= cutoff_day)
+                )
+            )
+        )
+        current_total = float(temp.loc[current_mask, metric].sum())
+        prev_total = float(temp.loc[previous_mask, metric].sum())
 
     if prev_total == 0:
         delta_pct = 100.0 if current_total > 0 else 0.0

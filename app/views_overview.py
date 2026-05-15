@@ -319,7 +319,14 @@ def _annual_goal_values(data: dict, kpis: dict) -> tuple[float, float, float]:
 
 
 def _render_cumulative_card(fig, delta_pct: float, previous_year: int, height: int = 258) -> None:
-    chart_height = 154
+    chart_height = 168
+    fig.update_layout(
+        height=chart_height,
+        margin=dict(l=34, r=12, t=8, b=22),
+        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0.02),
+    )
+    fig.update_xaxes(automargin=True, tickfont=dict(size=8))
+    fig.update_yaxes(automargin=True, tickfont=dict(size=8))
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f'''
@@ -337,10 +344,10 @@ def _render_cumulative_card(fig, delta_pct: float, previous_year: int, height: i
             }}
             .sd-bottom-title {{font-size:.82rem;font-weight:860;text-transform:uppercase;letter-spacing:.02em;margin:0 0 5px;}}
             .sd-bottom-sub {{font-size:.70rem;color:#AFC0D2;margin-bottom:5px;}}
-            .sd-trend-chart {{height:{chart_height}px;margin-top:4px;}}
+            .sd-trend-chart {{height:{chart_height}px;margin-top:2px;}}
             .sd-trend-badge {{
                 display:inline-flex;align-items:center;border:1px solid rgba(252,76,2,.65);color:#FFB16B;
-                border-radius:10px;padding:7px 10px;font-weight:760;font-size:.70rem;background:rgba(252,76,2,.08);margin-top:2px;
+                border-radius:10px;padding:6px 9px;font-weight:760;font-size:.68rem;background:rgba(252,76,2,.08);margin-top:0;
             }}
             .sd-trend-badge b {{color:#FC4C02;margin-right:4px;}}
         </style>
@@ -685,7 +692,7 @@ def render_overview(data: dict) -> None:
     # ROW 2: trend + performance + zones aligned
     # =====================================================
     bottom_height = 258
-    r2_c1, r2_c2, r2_c3 = st.columns([1.22, 0.88, 1.00], gap="small")
+    r2_c1, r2_c2, r2_c3 = st.columns([1.64, 0.80, 0.94], gap="small")
 
     with r2_c1:
         if cumulative_metric_df.empty:

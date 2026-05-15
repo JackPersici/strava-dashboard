@@ -282,11 +282,11 @@ def cumulative_trend_chart(cumulative_metric_df: pd.DataFrame, current_year: int
         category_orders={"month_label": MONTH_ORDER},
         labels={"month_label": "", "cumulative": "totale", "year_str": ""},
     )
-    fig.update_traces(line=dict(width=2.0), marker=dict(size=4.8), hovertemplate="%{x}<br>%{y:.1f}<extra></extra>")
+    fig.update_traces(line=dict(width=2.1), marker=dict(size=4.2), hovertemplate="%{x}<br>%{y:.1f}<extra></extra>")
     for trace in fig.data:
         if str(getattr(trace, "name", "")) != str(current_year):
             trace.update(line=dict(dash="dash", width=2.0))
-    return plot_style(fig, height=246)
+    return plot_style(fig, height=168)
 
 
 def monthly_trend_chart(trend_metric_df: pd.DataFrame, selected_metric: str, current_year: int) -> go.Figure:
