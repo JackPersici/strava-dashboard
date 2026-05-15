@@ -295,6 +295,139 @@ def _compact_overview_card(title: str, subtitle: str, body_html: str, height: in
     """
 
 
+
+
+def _annual_goal_values(data: dict, kpis: dict) -> tuple[float, float, float]:
+    current_km = float(kpis.get("distance_km", 0.0) or 0.0)
+    candidates = [data.get("annual_goal_km"), data.get("target_km")]
+    for key in ("projection", "total_projection", "projection_summary", "proj_summary"):
+        value = data.get(key)
+        if isinstance(value, dict):
+            candidates.extend([value.get("target_km"), value.get("annual_goal_km"), value.get("goal_km")])
+    target_km = 0.0
+    for value in candidates:
+        try:
+            if value is not None and float(value) > 0:
+                target_km = float(value)
+                break
+        except (TypeError, ValueError):
+            continue
+    if target_km <= 0:
+        target_km = max(3300.0, current_km * 1.2)
+    progress_pct = min(100.0, (current_km / target_km) * 100.0) if target_km > 0 else 0.0
+    return current_km, target_km, progress_pct
+
+
+def _render_cumulative_card(fig, delta_pct: float, previous_year: int, height: int = 258) -> None:
+    chart_height = 154
+    html_fragment = _plotly_fragment(fig, chart_height)
+    components.html(
+        f'''
+        <style>
+            .sd-bottom-card {{
+                height: {height}px;
+                box-sizing: border-box;
+                border: 1px solid rgba(216,230,255,0.105);
+                border-radius: 16px;
+                background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.052), transparent 16rem), rgba(10,20,34,0.86);
+                padding: 14px 16px 12px;
+                overflow: hidden;
+                color: #F7FAFF;
+                font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
+            }}
+            .sd-bottom-title {{font-size:.82rem;font-weight:860;text-transform:uppercase;letter-spacing:.02em;margin:0 0 5px;}}
+            .sd-bottom-sub {{font-size:.70rem;color:#AFC0D2;margin-bottom:5px;}}
+            .sd-trend-chart {{height:{chart_height}px;margin-top:4px;}}
+            .sd-trend-badge {{
+                display:inline-flex;align-items:center;border:1px solid rgba(252,76,2,.65);color:#FFB16B;
+                border-radius:10px;padding:7px 10px;font-weight:760;font-size:.70rem;background:rgba(252,76,2,.08);margin-top:2px;
+            }}
+            .sd-trend-badge b {{color:#FC4C02;margin-right:4px;}}
+        </style>
+        <div class="sd-bottom-card">
+            <div class="sd-bottom-title">Trend vs anno scorso</div>
+            <div class="sd-bottom-sub">Confronto cumulativo progressivo</div>
+            <div class="sd-trend-chart">{html_fragment}</div>
+            <div class="sd-trend-badge"><b>{fmt_pct(delta_pct)}</b> rispetto al {previous_year}</div>
+        </div>
+        ''',
+        height=height,
+        scrolling=False,
+    )
+
+
+def _performance_card_html(bp: pd.DataFrame, height: int = 258) -> str:
+    if bp.empty:
+        body = "<div class='big-empty'>Nessun dato disponibile.</div>"
+    else:
+        icon_map = ["🚴", "👟", "⛰️", "🕘"]
+        rows: list[str] = []
+        for idx, row in enumerate(bp.head(4).to_dict("records")):
+            rows.append(
+                "<div class='sd-perf-row'>"
+                f"<div class='sd-perf-icon'>{icon_map[idx % len(icon_map)]}</div>"
+                "<div class='sd-perf-copy'>"
+                f"<div class='sd-perf-value'>{_esc(row.get('value', '-'))}</div>"
+                f"<div class='sd-perf-sub'>{_esc(row.get('date', '-'))}</div>"
+                "</div>"
+                f"<div class='sd-perf-label'>{_esc(row.get('label', 'Performance'))}</div>"
+                "</div>"
+            )
+        body = "".join(rows)
+    return f'''
+    <div class="sd-bottom-html-card" style="height:{height}px;">
+        <div class="sd-bottom-html-head">
+            <h3>Migliori performance</h3>
+            <p>Record e attività più rilevanti</p>
+        </div>
+        <div class="sd-bottom-html-body">{body}</div>
+    </div>
+    '''
+
+
+def _zones_card_html(zones: pd.DataFrame, height: int = 258) -> str:
+    if zones.empty:
+        body = "<div class='big-empty'>Nessun dato disponibile.</div>"
+    else:
+        colors = ["#3B82F6", "#4ADE80", "#FBBF24", "#FB923C", "#EF4444"]
+        rows: list[str] = []
+        for idx, (_, row) in enumerate(zones.head(5).iterrows()):
+            zone = _esc(row.get("zone", "Zona"))
+            activities = float(row.get("activities_pct", 0.0) or 0.0)
+            width = max(2.0, min(100.0, activities))
+            color = colors[idx % len(colors)]
+            rows.append(
+                "<div class='sd-zone-v2-row'>"
+                f"<div class='sd-zone-v2-label'>{zone}</div>"
+                "<div class='sd-zone-v2-track'>"
+                f"<div class='sd-zone-v2-fill' style='width:{width:.1f}%;background:{color};'></div>"
+                "</div>"
+                f"<div class='sd-zone-v2-num'>{activities:.0f}%</div>"
+                "</div>"
+            )
+        body = "".join(rows)
+    return f'''
+    <div class="sd-bottom-html-card" style="height:{height}px;">
+        <div class="sd-bottom-html-head compact">
+            <h3>Zone di frequenza <span>(attività)</span></h3>
+        </div>
+        <div class="sd-bottom-html-body">{body}</div>
+    </div>
+    '''
+
+
+def _mini_bottom_kpi_html(icon: str, klass: str, title: str, value: str, subtitle: str) -> str:
+    return f'''
+    <div class="sd-bottom-kpi">
+        <div class="sd-bottom-kpi-icon {klass}">{icon}</div>
+        <div class="sd-bottom-kpi-copy">
+            <div class="sd-bottom-kpi-label">{_esc(title)}</div>
+            <div class="sd-bottom-kpi-value">{_esc(value)}</div>
+            <div class="sd-bottom-kpi-sub">{_esc(subtitle)}</div>
+        </div>
+    </div>
+    '''
+
 def _inject_overview_final_css() -> None:
     st.markdown(
         """
@@ -445,6 +578,35 @@ def _inject_overview_final_css() -> None:
             margin-top: 2px;
         }
 
+
+        .sd-bottom-html-card {
+            border: 1px solid rgba(216,230,255,0.105); border-radius: 16px;
+            background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.052), transparent 16rem), rgba(10,20,34,0.86);
+            padding: 14px 16px 12px; box-sizing: border-box; overflow: hidden; color: #F7FAFF;
+        }
+        .sd-bottom-html-head h3 { margin: 0; color: #F7FAFF; font-size: .82rem; font-weight: 860; text-transform: uppercase; letter-spacing: .02em; }
+        .sd-bottom-html-head h3 span { color: #AFC0D2; font-weight: 640; text-transform: none; letter-spacing: 0; }
+        .sd-bottom-html-head p { margin: 6px 0 10px; color: #AFC0D2; font-size: .70rem; }
+        .sd-bottom-html-head.compact { margin-bottom: 16px; }
+        .sd-perf-row { display: grid; grid-template-columns: 38px minmax(0, .84fr) minmax(0, 1fr); align-items: center; gap: 10px; border: 1px solid rgba(216,230,255,0.085); border-radius: 10px; background: rgba(7,16,28,0.36); min-height: 41px; padding: 6px 8px; margin-bottom: 6px; }
+        .sd-perf-icon { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: rgba(252,76,2,0.12); font-size: 1rem; }
+        .sd-perf-value { color: #F7FAFF; font-size: .88rem; font-weight: 850; letter-spacing: -.02em; line-height: 1.05; }
+        .sd-perf-sub { color: #AFC0D2; font-size: .62rem; margin-top: 2px; }
+        .sd-perf-label { color: #D8E6F6; font-size: .66rem; line-height: 1.18; text-align: right; }
+        .sd-zone-v2-row { display: grid; grid-template-columns: minmax(96px, .72fr) minmax(80px, 1fr) 36px; gap: 10px; align-items: center; margin-bottom: 13px; }
+        .sd-zone-v2-label { color: #D8E6F6; font-size: .68rem; line-height: 1.1; }
+        .sd-zone-v2-track { height: 7px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
+        .sd-zone-v2-fill { height: 100%; border-radius: 999px; box-shadow: 8px 0 0 rgba(255,255,255,0.18); }
+        .sd-zone-v2-num { color: #F7FAFF; font-size: .72rem; font-weight: 760; text-align: right; }
+        .sd-bottom-kpi { min-height: 64px; border: 1px solid rgba(216,230,255,0.105); border-radius: 14px; background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.05), transparent 14rem), rgba(10,20,34,0.82); padding: 12px 14px; display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: center; }
+        .sd-bottom-kpi-icon { width: 34px; height: 34px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.08rem; }
+        .sd-bottom-kpi-icon.calendar { background: rgba(14,165,233,0.14); color: #38BDF8; }
+        .sd-bottom-kpi-icon.week { background: rgba(34,197,94,0.14); color: #4ADE80; }
+        .sd-bottom-kpi-icon.sport { background: rgba(34,197,94,0.14); color: #4ADE80; }
+        .sd-bottom-kpi-icon.goal { background: rgba(239,68,68,0.14); color: #F87171; }
+        .sd-bottom-kpi-label { color: #AFC0D2; font-size: .62rem; line-height: 1; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
+        .sd-bottom-kpi-value { color: #F7FAFF; font-size: .95rem; font-weight: 850; margin-top: 5px; letter-spacing: -.025em; }
+        .sd-bottom-kpi-sub { color: #D8E6F6; font-size: .68rem; margin-top: 2px; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -520,62 +682,41 @@ def render_overview(data: dict) -> None:
     st.markdown("<div style='height:14px'></div>", unsafe_allow_html=True)
 
     # =====================================================
-    # ROW 2: compact cumulative trend + quick signals
+    # ROW 2: trend + performance + zones aligned
     # =====================================================
-    t_left, t_right = st.columns([1.82, 1.0], gap="medium")
+    bottom_height = 258
+    r2_c1, r2_c2, r2_c3 = st.columns([1.22, 0.88, 1.00], gap="small")
 
-    with t_left:
-        st.markdown(section_header_html("Trend vs anno scorso", "Confronto cumulativo progressivo"), unsafe_allow_html=True)
+    with r2_c1:
         if cumulative_metric_df.empty:
-            _empty("Nessun confronto disponibile.")
+            st.markdown(_compact_overview_card("Trend vs anno scorso", "Confronto cumulativo progressivo", "<div class='big-empty'>Nessun confronto disponibile.</div>", height=bottom_height), unsafe_allow_html=True)
         else:
-            st.plotly_chart(
+            _render_cumulative_card(
                 cumulative_trend_chart(cumulative_metric_df, distance_compare["current_year"]),
-                use_container_width=True,
-                config=_plot_config(),
-            )
-            st.markdown(
-                f"<div style='margin-top:-2px;margin-bottom:4px;'>{_delta_badge(distance_compare['delta_pct'])}</div>",
-                unsafe_allow_html=True,
+                distance_compare["delta_pct"],
+                distance_compare["previous_year"],
+                height=bottom_height,
             )
 
-    with t_right:
-        quick_rows = "".join([
-            insight_row_html("Sport principale", str(main_sport.get("sport", "-")), f"{main_sport.get('pct', 0):.0f}% distanza"),
-            insight_row_html("Giorno preferito", str(fav_day.get("weekday", "-")), f"{fav_day.get('pct', 0):.0f}% attività"),
-            insight_row_html("Settimana top", str(active_week.get("week", "-")), f"{active_week.get('activities', 0)} attività"),
-            insight_row_html("Costanza", f"{consistency:.0f}/100", "presenza settimanale"),
-        ])
-        st.markdown(_compact_overview_card("Segnali rapidi", "Insight principali", quick_rows, height=246), unsafe_allow_html=True)
+    with r2_c2:
+        st.markdown(_performance_card_html(bp, height=bottom_height), unsafe_allow_html=True)
 
-    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    with r2_c3:
+        st.markdown(_zones_card_html(zones, height=bottom_height), unsafe_allow_html=True)
+
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
     # =====================================================
-    # ROW 3: bottom widgets
+    # ROW 3: secondary KPI boxes
     # =====================================================
-    b1, b2 = st.columns([1.28, 1.0], gap="medium")
+    current_km, target_km, goal_pct = _annual_goal_values(data, kpis)
+    k1, k2, k3, k4 = st.columns(4, gap="small")
 
-    with b1:
-        section_open("Migliori performance", "Record e attività più rilevanti")
-        if bp.empty:
-            _empty()
-        else:
-            for row in bp.head(4).to_dict("records"):
-                st.markdown(
-                    insight_row_html(
-                        str(row.get("label", "Performance")),
-                        str(row.get("value", "-")),
-                        f"{row.get('date', '-')} · {row.get('sport', '-')}",
-                    ),
-                    unsafe_allow_html=True,
-                )
-        section_close()
-
-    with b2:
-        section_open("Zone di frequenza", "Distribuzione attività e tempo")
-        if zones.empty:
-            _empty()
-        else:
-            for _, row in zones.iterrows():
-                st.markdown(_zone_progress_html(row), unsafe_allow_html=True)
-        section_close()
+    with k1:
+        st.markdown(_mini_bottom_kpi_html("🚴", "sport", "Sport principale", str(main_sport.get("sport", "-")), f"{main_sport.get('pct', 0):.0f}% della distanza"), unsafe_allow_html=True)
+    with k2:
+        st.markdown(_mini_bottom_kpi_html("📅", "calendar", "Giorno preferito", str(fav_day.get("weekday", "-")), f"{fav_day.get('pct', 0):.0f}% delle attività"), unsafe_allow_html=True)
+    with k3:
+        st.markdown(_mini_bottom_kpi_html("📈", "week", "Settimana top", str(active_week.get("week", "-")), f"{active_week.get('activities', 0)} attività"), unsafe_allow_html=True)
+    with k4:
+        st.markdown(_mini_bottom_kpi_html("🎯", "goal", "Obiettivo annuale", f"{goal_pct:.0f}%", f"{fmt_km(current_km)} / {fmt_km(target_km)}"), unsafe_allow_html=True)
