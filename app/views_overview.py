@@ -212,27 +212,19 @@ def _key_numbers_html(data: dict, kpis: dict) -> str:
         ("⛰️", "elevation", fmt_m(kpis.get("avg_elevation_m", 0.0)), "media dislivello", "per attività"),
     ]
 
-    body = "".join(
-        f"""
-        <div class="sd-key-row">
-            <div class="sd-key-icon {klass}">{icon}</div>
-            <div class="sd-key-copy">
-                <div class="sd-key-value">{_esc(value)}</div>
-                <div class="sd-key-label">{_esc(label)}</div>
-                <div class="sd-key-sub">{_esc(subtitle)}</div>
-            </div>
-        </div>
-        """
-        for icon, klass, value, label, subtitle in rows
-    )
-
-    return f"""
-    <div class="sd-key-card">
-        <div class="sd-key-title">I tuoi numeri chiave</div>
-        <div class="sd-key-list">{body}</div>
-    </div>
-    """
-
+    parts = ["<div class='sd-key-card'><div class='sd-key-title'>I tuoi numeri chiave</div><div class='sd-key-list'>"]
+    for icon, klass, value, label, subtitle in rows:
+        parts.append(
+            "<div class='sd-key-row'>"
+            f"<div class='sd-key-icon {klass}'>{icon}</div>"
+            "<div class='sd-key-copy'>"
+            f"<div class='sd-key-value'>{_esc(value)}</div>"
+            f"<div class='sd-key-label'>{_esc(label)}</div>"
+            f"<div class='sd-key-sub'>{_esc(subtitle)}</div>"
+            "</div></div>"
+        )
+    parts.append("</div></div>")
+    return "".join(parts)
 
 def _zone_progress_html(row) -> str:
     zone = _esc(row.get("zone", "Zona"))
