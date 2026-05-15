@@ -68,7 +68,7 @@ def _plotly_fragment(fig, height: int) -> str:
 
 
 def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 226
+    chart_height = 206
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""

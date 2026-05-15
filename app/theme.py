@@ -258,14 +258,34 @@ def inject_global_css() -> None:
         .kpi-card {{
             position: relative;
             overflow: hidden;
-            min-height: 66px;
-            padding: 9px 11px 9px;
+            min-height: 74px;
+            padding: 10px 12px 10px;
             border-radius: 15px;
             border: 1px solid {COLORS['border']};
             background:
                 linear-gradient(145deg, rgba(16,28,45,0.82), rgba(8,17,31,0.96));
             box-shadow: 0 8px 22px rgba(0,0,0,0.12);
         }}
+        .kpi-inner {{
+            display: grid;
+            grid-template-columns: 36px minmax(0, 1fr);
+            align-items: center;
+            gap: 11px;
+        }}
+        .kpi-icon {{
+            width: 34px;
+            height: 34px;
+            border-radius: 11px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.04rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }}
+        .kpi-icon.fire {{ background: rgba(252,76,2,0.15); color: #FF8A3D; }}
+        .kpi-icon.distance {{ background: rgba(34,197,94,0.14); color: #4ADE80; }}
+        .kpi-icon.time {{ background: rgba(14,165,233,0.15); color: #38BDF8; }}
+        .kpi-icon.elevation {{ background: rgba(139,92,246,0.16); color: #A78BFA; }}
         .kpi-card::after {{
             content: "";
             position: absolute;
@@ -480,13 +500,32 @@ def overview_hero(title: str, subtitle: str, metrics: list[tuple[str, str]]) -> 
     return overview_topline(title, subtitle, [f"{label} · {value}" for label, value in metrics])
 
 
+def _kpi_icon(title: str) -> tuple[str, str]:
+    normalized = title.strip().lower()
+    if "att" in normalized:
+        return "🔥", "fire"
+    if "distan" in normalized:
+        return "🗺️", "distance"
+    if "tempo" in normalized:
+        return "🕘", "time"
+    if "disliv" in normalized:
+        return "⛰️", "elevation"
+    return "•", "distance"
+
+
 def card_html(title: str, value: str, subtitle: str = "") -> str:
     delta_class = _delta_class(subtitle)
+    icon, icon_class = _kpi_icon(title)
     return f"""
     <div class="kpi-card">
-        <div class="kpi-label">{_esc(title)}</div>
-        <div class="kpi-value">{_esc(value)}</div>
-        <div class="kpi-delta {delta_class}">{_esc(subtitle)}</div>
+        <div class="kpi-inner">
+            <div class="kpi-icon {icon_class}">{icon}</div>
+            <div class="kpi-copy">
+                <div class="kpi-label">{_esc(title)}</div>
+                <div class="kpi-value">{_esc(value)}</div>
+                <div class="kpi-delta {delta_class}">{_esc(subtitle)}</div>
+            </div>
+        </div>
     </div>
     """
 

@@ -145,7 +145,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     fig.update_traces(
         marker_line_width=0,
         opacity=0.90,
-        width=0.20,
+        width=0.16,
         hovertemplate="%{customdata[0]}<br>%{customdata[1]}<br>%{y:.1f} km<extra></extra>",
         showlegend=False,
     )
@@ -159,12 +159,12 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     )
     fig.update_yaxes(fixedrange=True)
     fig.update_layout(
-        bargap=0.74,
+        bargap=0.79,
         bargroupgap=0.10,
         showlegend=False,
     )
-    fig = plot_style(fig, height=278, show_legend=False)
-    fig.update_layout(margin=dict(l=48, r=12, t=2, b=46))
+    fig = plot_style(fig, height=214, show_legend=False)
+    fig.update_layout(margin=dict(l=48, r=12, t=2, b=50))
     fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
     fig.update_xaxes(automargin=True)
     return fig
