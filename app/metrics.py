@@ -145,8 +145,15 @@ def group_small_sports(df: pd.DataFrame, threshold_pct: float = 5.0, min_activit
 
     temp = df.copy()
     total_distance = float(temp["distance_km"].sum())
+
+    # Sport che devono restare sempre visibili come categorie autonome
+    # in tutta la dashboard, anche se pesano meno della soglia o hanno
+    # poche attivita. I label sono quelli normalizzati in SPORT_MAP.
+    always_visible = {"Ciclismo", "Ride", "VirtualRide", "GravelRide", "Corsa", "Run", "Escursionismo", "Hike"}
+    force_other = {"TrailRun"}
+
     if total_distance <= 0:
-        temp["sport_grouped"] = temp["sport_label"].fillna("Altri")
+        temp["sport_grouped"] = temp["sport_label"].where(temp["sport_label"].isin(always_visible), "Altri")
         return temp
 
     summary = (
@@ -159,9 +166,14 @@ def group_small_sports(df: pd.DataFrame, threshold_pct: float = 5.0, min_activit
     top_sports = summary.head(top_n)["sport_label"].tolist()
 
     def mapped(row: pd.Series) -> str:
+        sport = str(row["sport_label"])
+        if sport in force_other:
+            return "Altri"
+        if sport in always_visible:
+            return sport
         if row["sport_label"] not in top_sports or row["pct"] < threshold_pct or row["activities"] < min_activities:
             return "Altri"
-        return str(row["sport_label"])
+        return sport
 
     mapping = {row["sport_label"]: mapped(row) for _, row in summary.iterrows()}
     temp["sport_grouped"] = temp["sport_label"].map(mapping).fillna("Altri")
