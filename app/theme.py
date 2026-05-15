@@ -273,17 +273,18 @@ def inject_global_css() -> None:
         }}
         .kpi-copy {{ min-width: 0; }}
         .kpi-icon {{
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 34px;
-            height: 34px;
+            position: absolute !important;
+            right: 15px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            width: 36px !important;
+            height: 36px !important;
             border-radius: 11px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.05rem;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 1.08rem !important;
+            z-index: 3 !important;
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 22px rgba(0,0,0,0.16);
         }}
         .kpi-icon.fire {{ background: rgba(252,76,2,0.15); color: #FF8A3D; }}
@@ -520,10 +521,22 @@ def _kpi_icon(title: str) -> tuple[str, str]:
 def card_html(title: str, value: str, subtitle: str = "") -> str:
     delta_class = _delta_class(subtitle)
     icon, icon_class = _kpi_icon(title)
+    icon_bg = {
+        "fire": "rgba(252,76,2,0.15)",
+        "distance": "rgba(34,197,94,0.14)",
+        "time": "rgba(14,165,233,0.15)",
+        "elevation": "rgba(139,92,246,0.16)",
+    }.get(icon_class, "rgba(125,183,255,0.12)")
+    icon_color = {
+        "fire": "#FF8A3D",
+        "distance": "#4ADE80",
+        "time": "#38BDF8",
+        "elevation": "#A78BFA",
+    }.get(icon_class, "#AFC0D2")
     return f"""
-    <div class="kpi-card">
+    <div class="kpi-card" style="position:relative;padding-right:66px;">
         <div class="kpi-inner">
-            <div class="kpi-icon {icon_class}">{icon}</div>
+            <div class="kpi-icon {icon_class}" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:{icon_bg};color:{icon_color};font-size:1.12rem;z-index:5;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06),0 10px 22px rgba(0,0,0,0.16);">{icon}</div>
             <div class="kpi-copy">
                 <div class="kpi-label">{_esc(title)}</div>
                 <div class="kpi-value">{_esc(value)}</div>

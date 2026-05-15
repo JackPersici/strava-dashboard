@@ -57,6 +57,32 @@ def _sport_legend_html(df) -> str:
     return f"<div class='sd-card-legend'>{items}</div>"
 
 
+def _month_axis_labels_html(df) -> str:
+    if df.empty or not {"year", "month_num"}.issubset(df.columns):
+        return ""
+
+    temp = df[["year", "month_num"]].dropna().drop_duplicates().copy()
+    if temp.empty:
+        return ""
+
+    temp["year"] = temp["year"].astype(int)
+    temp["month_num"] = temp["month_num"].astype(int)
+
+    month_names = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+    min_year = int(temp["year"].min())
+    max_year = int(temp["year"].max())
+    max_month = int(temp.loc[temp["year"] == max_year, "month_num"].max())
+
+    labels: list[str] = []
+    for year in range(min_year, max_year + 1):
+        end_month = 12 if year < max_year else max_month
+        for month_num in range(1, end_month + 1):
+            labels.append(f"<span>{month_names[month_num - 1]}<br>{year}</span>")
+
+    cols = max(1, len(labels))
+    return f"<div class='sd-custom-xaxis' style='grid-template-columns: repeat({cols}, 34px);'>" + "".join(labels) + "</div>"
+
+
 def _plotly_fragment(fig, height: int) -> str:
     return fig.to_html(
         include_plotlyjs="cdn",
@@ -67,8 +93,8 @@ def _plotly_fragment(fig, height: int) -> str:
     )
 
 
-def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 188
+def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
+    chart_height = 160
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -92,7 +118,7 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
             .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
             .sd-scroll-shell {{
                 width: 100%;
-                height: 220px;
+                height: 224px;
                 overflow-x: auto;
                 overflow-y: hidden;
                 padding-bottom: 18px;
@@ -103,14 +129,26 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
             .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 18}px;}}
+            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 58}px;}}
+            .sd-custom-xaxis {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
+                margin-left: 48px;
+                margin-right: 12px;
+                margin-top: 2px;
+                color: #AFC0D2;
+                font-size: 9px;
+                line-height: 1.15;
+                text-align: center;
+                white-space: normal;
+            }}
         </style>
         <div class="sd-card-panel">
             <div class="sd-card-title">Andamento mensile</div>
             <div class="sd-card-subtitle">Distanza aggregata per mese e sport</div>
             {legend_html}
             <div class="sd-scroll-shell">
-                <div class="sd-scroll-inner">{html_fragment}</div>
+                <div class="sd-scroll-inner">{html_fragment}{axis_labels_html}</div>
             </div>
         </div>
         """,
@@ -466,7 +504,8 @@ def render_overview(data: dict) -> None:
             legend_html = _sport_legend_html(monthly_sport_df)
             fig = monthly_distance_chart(monthly_sport_df)
             month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
-            _render_monthly_card(fig, legend_html, min_width=max(680, month_count * 30), height=PANEL_HEIGHT)
+            axis_labels_html = _month_axis_labels_html(monthly_sport_df)
+            _render_monthly_card(fig, legend_html, axis_labels_html, min_width=max(680, month_count * 34), height=PANEL_HEIGHT)
 
     with right:
         if sport_summary_df.empty:
