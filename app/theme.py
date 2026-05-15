@@ -258,29 +258,33 @@ def inject_global_css() -> None:
         .kpi-card {{
             position: relative;
             overflow: hidden;
-            min-height: 74px;
-            padding: 10px 12px 10px;
+            min-height: 78px;
+            padding: 12px 52px 11px 14px;
             border-radius: 15px;
             border: 1px solid {COLORS['border']};
             background:
+                radial-gradient(circle at 86% 42%, rgba(125,183,255,0.075), transparent 5rem),
                 linear-gradient(145deg, rgba(16,28,45,0.82), rgba(8,17,31,0.96));
             box-shadow: 0 8px 22px rgba(0,0,0,0.12);
         }}
         .kpi-inner {{
-            display: grid;
-            grid-template-columns: 36px minmax(0, 1fr);
-            align-items: center;
-            gap: 11px;
+            display: block;
+            min-width: 0;
         }}
+        .kpi-copy {{ min-width: 0; }}
         .kpi-icon {{
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
             width: 34px;
             height: 34px;
             border-radius: 11px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.04rem;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+            font-size: 1.05rem;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 10px 22px rgba(0,0,0,0.16);
         }}
         .kpi-icon.fire {{ background: rgba(252,76,2,0.15); color: #FF8A3D; }}
         .kpi-icon.distance {{ background: rgba(34,197,94,0.14); color: #4ADE80; }}
@@ -430,7 +434,7 @@ def inject_global_css() -> None:
         .sd-page-kicker, .sd-hero-eyebrow, .sd-eyebrow {{ font-weight: 760; letter-spacing: .17em; }}
         .sd-section-title h3 {{ font-size: .84rem; font-weight: 720; letter-spacing: -0.018em; }}
         .sd-section-title p {{ font-size: .70rem; opacity: .92; }}
-        .kpi-card {{ min-height: 76px; padding: 11px 12px 10px; }}
+        .kpi-card {{ min-height: 78px; padding: 12px 52px 11px 14px; }}
         .kpi-value {{ text-shadow: none; margin-top: 7px; }}
         .sd-pill {{ padding: 3px 8px; font-weight: 720; }}
         .mini-value, .insight-main, .insight-value {{ font-weight: 760; }}
@@ -441,7 +445,7 @@ def inject_global_css() -> None:
             .block-container {{ padding-left: 0.70rem; padding-right: 0.70rem; padding-top: .4rem; }}
             .sd-hero, .sd-app-header, .sd-overview-topline {{ align-items: flex-start; flex-direction: column; padding: 13px 14px; }}
             .sd-hero-badges, .sd-header-actions, .sd-topline-actions {{ justify-content: flex-start; width: 100%; }}
-            .kpi-card {{ min-height: 74px; padding: 10px; }}
+            .kpi-card {{ min-height: 74px; padding: 10px 48px 10px 12px; }}
             .kpi-value {{ font-size: 1.22rem; }}
             div[data-testid="stPlotlyChart"] {{ padding: 6px 6px 0; }}
         }}

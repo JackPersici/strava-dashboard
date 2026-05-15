@@ -155,6 +155,7 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         tickvals=list(range(len(period_order))),
         ticktext=period_order,
         tickangle=0,
+        tickfont=dict(size=9, color="#AFC0D2"),
         fixedrange=True,
     )
     fig.update_yaxes(fixedrange=True)
@@ -163,8 +164,8 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         bargroupgap=0.10,
         showlegend=False,
     )
-    fig = plot_style(fig, height=214, show_legend=False)
-    fig.update_layout(margin=dict(l=48, r=12, t=2, b=50))
+    fig = plot_style(fig, height=188, show_legend=False)
+    fig.update_layout(margin=dict(l=48, r=12, t=2, b=58))
     fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
     fig.update_xaxes(automargin=True)
     return fig

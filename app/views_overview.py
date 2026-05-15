@@ -19,7 +19,7 @@ from app.theme import (
 )
 
 
-PANEL_HEIGHT = 398
+PANEL_HEIGHT = 390
 
 
 def _esc(value: object) -> str:
@@ -68,7 +68,7 @@ def _plotly_fragment(fig, height: int) -> str:
 
 
 def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 206
+    chart_height = 188
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
         f"""
@@ -87,15 +87,15 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
             }}
             .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin-bottom: 16px;}}
             .sd-card-subtitle {{font-size: .82rem; color: #AFC0D2; margin-bottom: 14px;}}
-            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 18px 20px; align-items: center; margin-bottom: 10px; font-size: .80rem; color: #EAF2FF;}}
+            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; margin-bottom: 8px; font-size: .78rem; color: #EAF2FF;}}
             .sd-card-legend-item {{display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;}}
             .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
             .sd-scroll-shell {{
                 width: 100%;
-                height: 244px;
+                height: 220px;
                 overflow-x: auto;
                 overflow-y: hidden;
-                padding-bottom: 10px;
+                padding-bottom: 18px;
                 box-sizing: border-box;
                 scrollbar-width: thin;
                 scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
@@ -103,7 +103,7 @@ def _render_monthly_card(fig, legend_html: str, min_width: int = 820, height: in
             .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height}px;}}
+            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 18}px;}}
         </style>
         <div class="sd-card-panel">
             <div class="sd-card-title">Andamento mensile</div>
