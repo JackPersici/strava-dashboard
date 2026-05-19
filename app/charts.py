@@ -82,38 +82,43 @@ def _legend_circle_traces(fig: go.Figure, color_map: dict[str, str]) -> go.Figur
     return fig
 
 
-def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
-    temp = monthly_sport_df.copy()
+def period_metric_chart(period_df: pd.DataFrame, value_col: str = "distance_km") -> go.Figure:
+    temp = period_df.copy()
     if temp.empty:
         return go.Figure()
+
+    if value_col not in temp.columns:
+        value_col = "distance_km" if "distance_km" in temp.columns else temp.select_dtypes("number").columns[-1]
+
+    if "period_label" not in temp.columns:
+        temp = temp.dropna(subset=["year", "month_num"]).copy()
+        if temp.empty:
+            return go.Figure()
+        temp["year"] = temp["year"].astype(int)
+        temp["month_num"] = temp["month_num"].astype(int)
+        temp["month"] = temp["month_num"].map(lambda n: MONTH_ORDER[int(n) - 1])
+        temp["period_label"] = temp["month"] + "<br>" + temp["year"].astype(str)
+        temp["period_sort"] = temp["year"] * 100 + temp["month_num"]
+    else:
+        temp = temp.dropna(subset=["period_label"]).copy()
+        if "period_sort" not in temp.columns:
+            sort_cols = [c for c in ["year", "week", "month_num"] if c in temp.columns]
+            if sort_cols:
+                temp["period_sort"] = temp[sort_cols].astype(int).astype(str).agg("-".join, axis=1)
+            else:
+                temp["period_sort"] = range(len(temp))
 
     temp = (
-        temp.groupby(["year", "month_num", "month", "sport_grouped"], as_index=False, dropna=False)
-        .agg(distance_km=("distance_km", "sum"))
+        temp.groupby(["period_label", "period_sort", "sport_grouped"], as_index=False, dropna=False)
+        .agg(value=(value_col, "sum"))
+        .sort_values("period_sort")
     )
-    temp = temp.dropna(subset=["year", "month_num"])
     if temp.empty:
         return go.Figure()
 
-    temp["year"] = temp["year"].astype(int)
-    temp["month_num"] = temp["month_num"].astype(int)
-
-    min_year = int(temp["year"].min())
-    max_year = int(temp["year"].max())
-    max_month_for_max_year = int(temp.loc[temp["year"] == max_year, "month_num"].max())
-
-    periods: list[dict[str, object]] = []
-    for year in range(min_year, max_year + 1):
-        end_month = 12 if year < max_year else max_month_for_max_year
-        for month_num in range(1, end_month + 1):
-            month = MONTH_ORDER[month_num - 1]
-            periods.append({
-                "year": year,
-                "month_num": month_num,
-                "month": month,
-                "period_label": f"{month}<br>{year}",
-            })
-    periods_df = pd.DataFrame(periods)
+    periods_df = temp[["period_label", "period_sort"]].drop_duplicates().sort_values("period_sort").reset_index(drop=True)
+    period_order = periods_df["period_label"].astype(str).tolist()
+    period_idx = {label: i for i, label in enumerate(period_order)}
 
     preferred_order = ["Ciclismo", "Ride", "VirtualRide", "GravelRide", "Corsa", "Run", "Escursionismo", "Hike", "Altri"]
     available = [str(x) for x in temp["sport_grouped"].dropna().unique().tolist()]
@@ -122,31 +127,35 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
         return go.Figure()
 
     full_index = periods_df.merge(pd.DataFrame({"sport_grouped": sports}), how="cross")
-    temp = full_index.merge(temp, on=["year", "month_num", "month", "sport_grouped"], how="left")
-    temp["distance_km"] = temp["distance_km"].fillna(0.0)
-
-    period_order = periods_df["period_label"].tolist()
-    period_idx = {label: i for i, label in enumerate(period_order)}
+    temp = full_index.merge(temp, on=["period_label", "period_sort", "sport_grouped"], how="left")
+    temp["value"] = temp["value"].fillna(0.0)
     temp["period_label"] = temp["period_label"].astype(str)
     temp["period_idx"] = temp["period_label"].map(period_idx)
     temp["sport_grouped"] = pd.Categorical(temp["sport_grouped"], categories=sports, ordered=True)
 
+    y_labels = {
+        "distance_km": "km",
+        "moving_time_h": "h",
+        "elevation_m": "m",
+        "activities": "attività",
+    }
+    unit = y_labels.get(value_col, "")
     color_map = sport_color_map(sports)
     fig = px.bar(
-        temp.sort_values(["year", "month_num", "sport_grouped"]),
+        temp.sort_values(["period_sort", "sport_grouped"]),
         x="period_idx",
-        y="distance_km",
+        y="value",
         color="sport_grouped",
         barmode="stack",
         color_discrete_map=color_map,
-        labels={"period_idx": "", "distance_km": "km", "sport_grouped": ""},
+        labels={"period_idx": "", "value": unit, "sport_grouped": ""},
         custom_data=["period_label", "sport_grouped"],
     )
     fig.update_traces(
         marker_line_width=0,
-        opacity=0.90,
-        width=0.16,
-        hovertemplate="%{customdata[0]}<br>%{customdata[1]}<br>%{y:.1f} km<extra></extra>",
+        opacity=0.92,
+        width=0.30,
+        hovertemplate=f"%{{customdata[0]}}<br>%{{customdata[1]}}<br>%{{y:.1f}} {unit}<extra></extra>",
         showlegend=False,
     )
 
@@ -162,8 +171,8 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     )
     fig.update_yaxes(fixedrange=True)
     fig.update_layout(
-        bargap=0.79,
-        bargroupgap=0.10,
+        bargap=0.60,
+        bargroupgap=0.06,
         showlegend=False,
     )
     fig = plot_style(fig, height=120, show_legend=False)
@@ -172,6 +181,9 @@ def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
     fig.update_xaxes(automargin=True)
     return fig
 
+
+def monthly_distance_chart(monthly_sport_df: pd.DataFrame) -> go.Figure:
+    return period_metric_chart(monthly_sport_df, value_col="distance_km")
 
 def sport_donut_chart(sport_summary_df: pd.DataFrame) -> go.Figure:
     temp = sport_summary_df.copy()
