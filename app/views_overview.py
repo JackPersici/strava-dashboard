@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import html
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 
-from app.charts import cumulative_trend_chart, period_metric_chart, sport_donut_chart
+from app.charts import cumulative_trend_chart, monthly_distance_chart, sport_donut_chart
 from app.formatters import fmt_h, fmt_int, fmt_km, fmt_m, fmt_pct
 from app.theme import (
     card_html,
@@ -20,6 +22,14 @@ from app.theme import (
 
 
 PANEL_HEIGHT = 345
+
+TREND_METRICS = {
+    "Distanza": ("distance_km", "km"),
+    "Tempo": ("moving_time_h", "h"),
+    "Dislivello": ("elevation_m", "m"),
+    "Attività": ("activities", "attività"),
+}
+TREND_VIEWS = ["Mensile", "Settimanale"]
 
 
 def _esc(value: object) -> str:
@@ -57,40 +67,175 @@ def _sport_legend_html(df) -> str:
     return f"<div class='sd-card-legend'>{items}</div>"
 
 
-def _period_axis_labels_html(df) -> str:
-    if df.empty:
+def _month_axis_labels_html(df) -> str:
+    if df.empty or not {"year", "month_num"}.issubset(df.columns):
         return ""
 
-    if "period_label" in df.columns:
-        temp = df[["period_label", "period_sort"]].dropna().drop_duplicates().copy() if "period_sort" in df.columns else df[["period_label"]].dropna().drop_duplicates().copy()
-        if temp.empty:
-            return ""
-        if "period_sort" in temp.columns:
-            temp = temp.sort_values("period_sort")
-        labels = [f"<span>{str(x)}</span>" for x in temp["period_label"].astype(str).tolist()]
-    else:
-        if not {"year", "month_num"}.issubset(df.columns):
-            return ""
-        temp = df[["year", "month_num"]].dropna().drop_duplicates().copy()
-        if temp.empty:
-            return ""
+    temp = df[["year", "month_num"]].dropna().drop_duplicates().copy()
+    if temp.empty:
+        return ""
 
+    temp["year"] = temp["year"].astype(int)
+    temp["month_num"] = temp["month_num"].astype(int)
+
+    month_names = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+    min_year = int(temp["year"].min())
+    max_year = int(temp["year"].max())
+    max_month = int(temp.loc[temp["year"] == max_year, "month_num"].max())
+
+    labels: list[str] = []
+    for year in range(min_year, max_year + 1):
+        end_month = 12 if year < max_year else max_month
+        for month_num in range(1, end_month + 1):
+            labels.append(f"<span>{month_names[month_num - 1]}<br>{year}</span>")
+
+    cols = max(1, len(labels))
+    return f"<div class='sd-custom-xaxis' style='grid-template-columns: repeat({cols}, minmax(0, 1fr));'>" + "".join(labels) + "</div>"
+
+
+
+def _period_axis_labels_html(labels: list[str]) -> str:
+    if not labels:
+        return ""
+    cols = max(1, len(labels))
+    items = "".join(f"<span>{label}</span>" for label in labels)
+    return f"<div class='sd-custom-xaxis' style='grid-template-columns: repeat({cols}, minmax(0, 1fr));'>{items}</div>"
+
+
+def _weekly_by_sport_from_data(data: dict, fallback_monthly: pd.DataFrame) -> pd.DataFrame:
+    df = _activity_dataframe_from_data(data)
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    temp = df.copy()
+    if "sport_grouped" not in temp.columns:
+        if "sport_label" in temp.columns:
+            temp["sport_grouped"] = temp["sport_label"]
+        else:
+            return pd.DataFrame()
+
+    if "week" not in temp.columns or "year" not in temp.columns:
+        date_col = None
+        for candidate in ("start_date_local", "start_date", "day"):
+            if candidate in temp.columns:
+                date_col = candidate
+                break
+        if date_col is None:
+            return pd.DataFrame()
+        dates = pd.to_datetime(temp[date_col], errors="coerce")
+        temp["year"] = dates.dt.year
+        temp["week"] = dates.dt.isocalendar().week.astype("Int64")
+
+    for col in ("distance_km", "moving_time_h", "elevation_m"):
+        if col not in temp.columns:
+            temp[col] = 0.0
+    if "id" not in temp.columns:
+        temp["id"] = range(1, len(temp) + 1)
+
+    out = (
+        temp.dropna(subset=["year", "week"])
+        .groupby(["year", "week", "sport_grouped"], as_index=False, dropna=False)
+        .agg(
+            distance_km=("distance_km", "sum"),
+            moving_time_h=("moving_time_h", "sum"),
+            elevation_m=("elevation_m", "sum"),
+            activities=("id", "count"),
+        )
+        .sort_values(["year", "week"])
+    )
+    return out
+
+
+def _period_bar_chart(period_df: pd.DataFrame, metric_col: str, view: str) -> tuple[go.Figure, list[str], int]:
+    temp = period_df.copy()
+    if temp.empty:
+        return go.Figure(), [], 640
+
+    if metric_col not in temp.columns:
+        temp[metric_col] = 0.0
+
+    preferred = ["Ciclismo", "Ride", "VirtualRide", "GravelRide", "Corsa", "Run", "Escursionismo", "Hike", "Altri"]
+    available = [str(x) for x in temp["sport_grouped"].dropna().unique().tolist()]
+    sports = [sport for sport in preferred if sport in available] + [sport for sport in available if sport not in preferred]
+    color_map = sport_color_map(sports)
+
+    if view == "Settimanale" and {"year", "week"}.issubset(temp.columns):
+        temp = temp.dropna(subset=["year", "week"]).copy()
+        if temp.empty:
+            return go.Figure(), [], 640
+        temp["year"] = temp["year"].astype(int)
+        temp["week"] = temp["week"].astype(int)
+        periods_df = temp[["year", "week"]].drop_duplicates().sort_values(["year", "week"]).reset_index(drop=True)
+        periods_df["period_label"] = periods_df.apply(lambda r: f"W{int(r['week']):02d}<br>{int(r['year'])}", axis=1)
+        join_cols = ["year", "week"]
+        sort_cols = ["year", "week", "sport_grouped"]
+        min_width = max(680, int(len(periods_df) * 30))
+    else:
+        temp = temp.dropna(subset=["year", "month_num"]).copy()
+        if temp.empty:
+            return go.Figure(), [], 640
         temp["year"] = temp["year"].astype(int)
         temp["month_num"] = temp["month_num"].astype(int)
-
         month_names = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
         min_year = int(temp["year"].min())
         max_year = int(temp["year"].max())
         max_month = int(temp.loc[temp["year"] == max_year, "month_num"].max())
-
-        labels: list[str] = []
+        rows = []
         for year in range(min_year, max_year + 1):
             end_month = 12 if year < max_year else max_month
             for month_num in range(1, end_month + 1):
-                labels.append(f"<span>{month_names[month_num - 1]}<br>{year}</span>")
+                rows.append({"year": year, "month_num": month_num, "period_label": f"{month_names[month_num - 1]}<br>{year}"})
+        periods_df = pd.DataFrame(rows)
+        join_cols = ["year", "month_num"]
+        sort_cols = ["year", "month_num", "sport_grouped"]
+        min_width = max(640, int(len(periods_df) * 44))
 
-    cols = max(1, len(labels))
-    return f"<div class='sd-custom-xaxis' style='grid-template-columns: repeat({cols}, minmax(0, 1fr));'>" + "".join(labels) + "</div>"
+    if periods_df.empty or not sports:
+        return go.Figure(), [], min_width
+
+    full_index = periods_df[join_cols + ["period_label"]].merge(pd.DataFrame({"sport_grouped": sports}), how="cross")
+    temp = full_index.merge(temp, on=join_cols + ["sport_grouped"], how="left")
+    temp[metric_col] = pd.to_numeric(temp[metric_col], errors="coerce").fillna(0.0)
+    period_order = periods_df["period_label"].astype(str).tolist()
+    period_idx = {label: i for i, label in enumerate(period_order)}
+    temp["period_label"] = temp["period_label"].astype(str)
+    temp["period_idx"] = temp["period_label"].map(period_idx)
+    temp["sport_grouped"] = pd.Categorical(temp["sport_grouped"], categories=sports, ordered=True)
+
+    unit = next((unit for _label, (col, unit) in TREND_METRICS.items() if col == metric_col), "")
+    fig = px.bar(
+        temp.sort_values(sort_cols),
+        x="period_idx",
+        y=metric_col,
+        color="sport_grouped",
+        barmode="stack",
+        color_discrete_map=color_map,
+        labels={"period_idx": "", metric_col: unit, "sport_grouped": ""},
+        custom_data=["period_label", "sport_grouped"],
+    )
+    fig.update_traces(
+        marker_line_width=0,
+        opacity=0.92,
+        width=0.30 if view == "Mensile" else 0.48,
+        hovertemplate=f"%{{customdata[0]}}<br>%{{customdata[1]}}<br>%{{y:.1f}} {unit}<extra></extra>",
+        showlegend=False,
+    )
+    fig.update_xaxes(
+        tickmode="array",
+        tickvals=list(range(len(period_order))),
+        ticktext=period_order,
+        showticklabels=False,
+        fixedrange=True,
+        range=[-0.5, max(0.5, len(period_order) - 0.5)],
+    )
+    fig.update_yaxes(fixedrange=True)
+    fig.update_layout(bargap=0.52 if view == "Mensile" else 0.34, bargroupgap=0.08, showlegend=False)
+    from app.charts import plot_style
+    fig = plot_style(fig, height=122, show_legend=False)
+    fig.update_layout(margin=dict(l=48, r=12, t=0, b=0))
+    fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
+    fig.update_xaxes(automargin=True)
+    return fig, period_order, min_width
 
 def _plotly_fragment(fig, height: int) -> str:
     return fig.to_html(
@@ -102,9 +247,43 @@ def _plotly_fragment(fig, height: int) -> str:
     )
 
 
-def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", control_html: str = "", min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
-    chart_height = 120
-    html_fragment = _plotly_fragment(fig, chart_height)
+def _render_monthly_card(
+    chart_variants: dict[tuple[str, str], tuple[go.Figure, list[str], int]],
+    legend_html: str,
+    height: int = PANEL_HEIGHT,
+) -> None:
+    chart_height = 122
+    chart_blocks: list[str] = []
+    metric_options = list(TREND_METRICS.keys())
+    view_options = TREND_VIEWS
+
+    for metric_label in metric_options:
+        for view_label in view_options:
+            fig, labels, min_width = chart_variants.get((metric_label, view_label), (go.Figure(), [], 640))
+            html_fragment = _plotly_fragment(fig, chart_height)
+            axis_labels_html = _period_axis_labels_html(labels)
+            active = " is-active" if metric_label == "Distanza" and view_label == "Mensile" else ""
+            chart_blocks.append(
+                '<div class="sd-chart-variant{}" data-metric="{}" data-view="{}">'
+                '<div class="sd-scroll-shell"><div class="sd-scroll-inner" style="min-width:{}px;">{}{}</div></div></div>'.format(
+                    active,
+                    _esc(metric_label),
+                    _esc(view_label),
+                    min_width,
+                    html_fragment,
+                    axis_labels_html,
+                )
+            )
+
+    metric_buttons = "".join(
+        f"<button type='button' class='sd-select-option' data-value='{_esc(label)}'>{_esc(label)}</button>"
+        for label in metric_options
+    )
+    view_buttons = "".join(
+        f"<button type='button' class='sd-select-option' data-value='{_esc(label)}'>{_esc(label)}</button>"
+        for label in view_options
+    )
+
     components.html(
         f"""
         <style>
@@ -115,96 +294,119 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", cont
                 border: 1px solid rgba(216,230,255,0.095);
                 border-radius: 18px;
                 background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.055), transparent 18rem), rgba(10,20,34,0.92);
-                padding: 20px 24px 13px 24px;
+                padding: 18px 24px 12px 24px;
                 overflow: hidden;
                 color: #F7FAFF;
                 font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
             }}
-            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin-bottom: 16px;}}
-            .sd-card-subtitle {{font-size: .82rem; color: #AFC0D2; margin-bottom: 14px;}}
-            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; margin-bottom: 8px; font-size: .78rem; color: #EAF2FF;}}
+            .sd-card-top {{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px;}}
+            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin: 6px 0 0; white-space:nowrap;}}
+            .sd-control-row {{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end;}}
+            .sd-control {{width:142px;position:relative;}}
+            .sd-control.small {{width:132px;}}
+            .sd-control-label {{font-size:.63rem;letter-spacing:.10em;text-transform:uppercase;color:#AFC0D2;font-weight:820;margin-bottom:6px;}}
+            .sd-select {{position:relative;}}
+            .sd-select-trigger {{
+                width:100%;height:34px;border-radius:12px;border:1px solid rgba(216,230,255,.12);
+                background:rgba(7,16,28,.60);color:#F7FAFF;display:flex;align-items:center;justify-content:space-between;
+                padding:0 11px;font-size:.78rem;font-weight:720;box-sizing:border-box;cursor:pointer;
+            }}
+            .sd-select-trigger span:first-child {{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}}
+            .sd-chevron {{color:#7F93A9;font-size:.88rem;margin-left:8px;}}
+            .sd-select-menu {{
+                display:none;position:absolute;right:0;top:40px;z-index:10;width:100%;border-radius:12px;
+                border:1px solid rgba(216,230,255,.12);background:#0B1626;box-shadow:0 16px 30px rgba(0,0,0,.35);overflow:hidden;
+            }}
+            .sd-select.open .sd-select-menu {{display:block;}}
+            .sd-select-option {{
+                width:100%;border:0;background:transparent;color:#D8E6F6;text-align:left;padding:8px 10px;
+                font-size:.76rem;font-weight:720;cursor:pointer;
+            }}
+            .sd-select-option:hover, .sd-select-option.active {{background:rgba(240,90,34,.16);color:#FFFFFF;}}
+            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 13px 18px; align-items: center; margin-bottom: 8px; font-size: .78rem; color: #EAF2FF;}}
             .sd-card-legend-item {{display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;}}
             .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
+            .sd-chart-variant {{display:none;}}
+            .sd-chart-variant.is-active {{display:block;}}
             .sd-scroll-shell {{
-                width: 100%;
-                height: 184px;
-                overflow-x: auto;
-                overflow-y: hidden;
-                padding-bottom: 15px;
-                box-sizing: border-box;
-                scrollbar-width: thin;
-                scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
+                width: 100%;height: 178px;overflow-x: auto;overflow-y: hidden;padding-bottom: 13px;box-sizing: border-box;
+                scrollbar-width: thin;scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
             }}
-            .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
+            .sd-scroll-shell::-webkit-scrollbar {{height: 9px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 48}px;}}
+            .sd-scroll-inner {{height: {chart_height + 50}px;}}
             .sd-custom-xaxis {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(30px, 1fr));
-                margin-left: 48px;
-                margin-right: 12px;
-                margin-top: 0;
-                color: #AFC0D2;
-                font-size: 9px;
-                line-height: 1.15;
-                text-align: center;
-                white-space: normal;
+                display: grid;margin-left: 48px;margin-right: 12px;margin-top: 0;color: #AFC0D2;font-size: 9px;
+                line-height: 1.15;text-align: center;white-space: normal;
             }}
         </style>
         <div class="sd-card-panel">
-            <div class="sd-card-top"><div><div class="sd-card-title">Andamento mensile</div></div>{control_html}</div>
-            <div class="sd-card-subtitle">Dati aggregati per periodo e sport</div>
-            {legend_html}
-            <div class="sd-scroll-shell">
-                <div class="sd-scroll-inner">{html_fragment}{axis_labels_html}</div>
+            <div class="sd-card-top">
+                <div class="sd-card-title">Andamento mensile</div>
+                <div class="sd-control-row">
+                    <div class="sd-control">
+                        <div class="sd-control-label">Metrica trend</div>
+                        <div class="sd-select" data-kind="metric">
+                            <button type="button" class="sd-select-trigger"><span>Distanza</span><span class="sd-chevron">⌄</span></button>
+                            <div class="sd-select-menu">{metric_buttons}</div>
+                        </div>
+                    </div>
+                    <div class="sd-control small">
+                        <div class="sd-control-label">Vista trend</div>
+                        <div class="sd-select" data-kind="view">
+                            <button type="button" class="sd-select-trigger"><span>Mensile</span><span class="sd-chevron">⌄</span></button>
+                            <div class="sd-select-menu">{view_buttons}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
+            {legend_html}
+            {''.join(chart_blocks)}
         </div>
+        <script>
+        (function() {{
+            const root = document.currentScript.previousElementSibling;
+            let metric = 'Distanza';
+            let view = 'Mensile';
+            function setActive() {{
+                root.querySelectorAll('.sd-chart-variant').forEach(el => {{
+                    el.classList.toggle('is-active', el.dataset.metric === metric && el.dataset.view === view);
+                }});
+                root.querySelectorAll('.sd-select').forEach(sel => {{
+                    const kind = sel.dataset.kind;
+                    const val = kind === 'metric' ? metric : view;
+                    sel.querySelector('.sd-select-trigger span:first-child').textContent = val;
+                    sel.querySelectorAll('.sd-select-option').forEach(opt => opt.classList.toggle('active', opt.dataset.value === val));
+                }});
+            }}
+            root.querySelectorAll('.sd-select-trigger').forEach(btn => {{
+                btn.addEventListener('click', (e) => {{
+                    const sel = btn.closest('.sd-select');
+                    const wasOpen = sel.classList.contains('open');
+                    root.querySelectorAll('.sd-select').forEach(x => x.classList.remove('open'));
+                    if (!wasOpen) sel.classList.add('open');
+                    e.stopPropagation();
+                }});
+            }});
+            root.querySelectorAll('.sd-select-option').forEach(btn => {{
+                btn.addEventListener('click', () => {{
+                    const sel = btn.closest('.sd-select');
+                    if (sel.dataset.kind === 'metric') metric = btn.dataset.value;
+                    if (sel.dataset.kind === 'view') view = btn.dataset.value;
+                    sel.classList.remove('open');
+                    setActive();
+                }});
+            }});
+            document.addEventListener('click', () => root.querySelectorAll('.sd-select').forEach(x => x.classList.remove('open')));
+            setActive();
+        }})();
+        </script>
         """,
         height=height,
         scrolling=False,
     )
 
-
-
-def _render_period_chart_scroll(fig, axis_labels_html: str = "", min_width: int = 820, chart_height: int = 126) -> None:
-    html_fragment = _plotly_fragment(fig, chart_height)
-    components.html(
-        f"""
-        <style>
-            .sd-scroll-shell {{
-                width: 100%;
-                height: 176px;
-                overflow-x: auto;
-                overflow-y: hidden;
-                padding-bottom: 14px;
-                box-sizing: border-box;
-                scrollbar-width: thin;
-                scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
-            }}
-            .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
-            .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
-            .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 50}px;}}
-            .sd-custom-xaxis {{
-                display: grid;
-                margin-left: 48px;
-                margin-right: 12px;
-                margin-top: 0;
-                color: #AFC0D2;
-                font-size: 9px;
-                line-height: 1.15;
-                text-align: center;
-                white-space: normal;
-            }}
-        </style>
-        <div class="sd-scroll-shell">
-            <div class="sd-scroll-inner">{html_fragment}{axis_labels_html}</div>
-        </div>
-        """,
-        height=176,
-        scrolling=False,
-    )
 
 def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
     chart_height = 230
@@ -252,17 +454,6 @@ def _activity_dataframe_from_data(data: dict) -> pd.DataFrame | None:
         if isinstance(value, pd.DataFrame) and not value.empty:
             return value
     return None
-
-
-def _weekly_sport_df_from_data(data: dict) -> pd.DataFrame:
-    df = _activity_dataframe_from_data(data)
-    if df is None:
-        return pd.DataFrame()
-    try:
-        from app.metrics import weekly_by_sport
-        return weekly_by_sport(df)
-    except Exception:
-        return pd.DataFrame()
 
 
 def _current_training_week_streak(data: dict) -> int | None:
@@ -679,22 +870,6 @@ def _inject_overview_final_css() -> None:
         .sd-bottom-kpi-label { color: #AFC0D2; font-size: .62rem; line-height: 1; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
         .sd-bottom-kpi-value { color: #F7FAFF; font-size: .95rem; font-weight: 850; margin-top: 5px; letter-spacing: -.025em; }
         .sd-bottom-kpi-sub { color: #D8E6F6; font-size: .68rem; margin-top: 2px; }
-        .sd-trend-controls-wrap { margin: 0; }
-        .sd-trend-controls-wrap label { color: #AFC0D2 !important; font-size: .56rem !important; text-transform: uppercase; letter-spacing: .08em; }
-        .sd-trend-panel-title { color:#F7FAFF; font-size:1.03rem; font-weight:850; letter-spacing:-0.035em; margin: 0 0 16px; }
-        .sd-trend-panel-subtitle { color:#AFC0D2; font-size:.82rem; margin:0 0 14px; }
-        div[data-testid="stVerticalBlockBorderWrapper"] {
-            border: 1px solid rgba(216,230,255,0.095) !important;
-            border-radius: 18px !important;
-            background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.055), transparent 18rem), rgba(10,20,34,0.92) !important;
-            padding: 20px 24px 13px !important;
-            min-height: 345px !important;
-            box-sizing: border-box !important;
-        }
-        /* Hide the old global Metric Trend filter row item; the control now lives inside the trend card. */
-        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) div[data-baseweb="select"]):has(> div[data-testid="column"]:nth-child(2) div[data-baseweb="select"]):has(> div[data-testid="column"]:nth-child(3) div[data-baseweb="select"]) > div[data-testid="column"]:nth-child(3) {
-            display: none !important;
-        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -749,55 +924,20 @@ def render_overview(data: dict) -> None:
     left, middle, right = st.columns([1.64, 1.24, 0.82], gap="small")
 
     with left:
-        metric_options = {
-            "Distanza": "distance_km",
-            "Tempo": "moving_time_h",
-            "Dislivello": "elevation_m",
-            "Attività": "activities",
-        }
-        with st.container(border=True):
-            header_left, header_right = st.columns([0.58, 0.42], gap="small")
-            with header_left:
-                st.markdown("<div class='sd-trend-panel-title'>Andamento mensile</div>", unsafe_allow_html=True)
-            with header_right:
-                st.markdown("<div class='sd-trend-controls-wrap'>", unsafe_allow_html=True)
-                ctrl_a, ctrl_b = st.columns(2, gap="small")
-                with ctrl_a:
-                    selected_metric_label = st.selectbox(
-                        "Metrica trend",
-                        list(metric_options.keys()),
-                        index=0,
-                        key="overview_inline_metric_trend",
-                    )
-                with ctrl_b:
-                    selected_granularity = st.selectbox(
-                        "Vista trend",
-                        ["Mensile", "Settimanale"],
-                        index=0,
-                        key="overview_inline_trend_granularity",
-                    )
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            st.markdown("<div class='sd-trend-panel-subtitle'>Dati aggregati per periodo e sport</div>", unsafe_allow_html=True)
-
-            value_col = metric_options[selected_metric_label]
-            chart_df = monthly_sport_df
-            if selected_granularity == "Settimanale":
-                weekly_df = _weekly_sport_df_from_data(data)
-                if not weekly_df.empty:
-                    chart_df = weekly_df
-
-            if chart_df.empty:
-                _empty()
-            else:
-                st.markdown(_sport_legend_html(chart_df), unsafe_allow_html=True)
-                fig = period_metric_chart(chart_df, value_col=value_col)
-                if "period_label" in chart_df.columns:
-                    period_count = max(1, chart_df["period_label"].drop_duplicates().shape[0])
-                else:
-                    period_count = max(1, chart_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(chart_df.columns) else 12
-                axis_labels_html = _period_axis_labels_html(chart_df)
-                _render_period_chart_scroll(fig, axis_labels_html, min_width=max(640, period_count * 44), chart_height=126)
+        if monthly_sport_df.empty:
+            _empty()
+        else:
+            legend_html = _sport_legend_html(monthly_sport_df)
+            weekly_sport_df = _weekly_by_sport_from_data(data, monthly_sport_df)
+            chart_variants = {}
+            for metric_label, (metric_col, _unit) in TREND_METRICS.items():
+                chart_variants[(metric_label, "Mensile")] = _period_bar_chart(monthly_sport_df, metric_col, "Mensile")
+                chart_variants[(metric_label, "Settimanale")] = (
+                    chart_variants[(metric_label, "Mensile")]
+                    if weekly_sport_df.empty
+                    else _period_bar_chart(weekly_sport_df, metric_col, "Settimanale")
+                )
+            _render_monthly_card(chart_variants, legend_html, height=PANEL_HEIGHT)
 
     with middle:
         if sport_summary_df.empty:

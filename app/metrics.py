@@ -246,35 +246,6 @@ def monthly_by_sport(df: pd.DataFrame) -> pd.DataFrame:
     return out.rename(columns={sport_col: "sport_grouped"})
 
 
-
-def weekly_by_sport(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return pd.DataFrame()
-
-    sport_col = _sport_col(df)
-    temp = df.dropna(subset=["start_date_local"]).copy()
-    if temp.empty:
-        return pd.DataFrame()
-
-    iso = temp["start_date_local"].dt.isocalendar()
-    temp["year"] = iso.year.astype(int)
-    temp["week"] = iso.week.astype(int)
-    temp["period_label"] = "W" + temp["week"].astype(str).str.zfill(2) + "<br>" + temp["year"].astype(str)
-    temp["period_sort"] = temp["year"] * 100 + temp["week"]
-
-    out = (
-        temp.groupby(["year", "week", "period_label", "period_sort", sport_col], dropna=False)
-        .agg(
-            distance_km=("distance_km", "sum"),
-            moving_time_h=("moving_time_h", "sum"),
-            elevation_m=("elevation_m", "sum"),
-            activities=("id", "count"),
-        )
-        .reset_index()
-        .sort_values(["year", "week"])
-    )
-    return out.rename(columns={sport_col: "sport_grouped"})
-
 def cumulative_by_year(df: pd.DataFrame, metric: str = "distance_km") -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
