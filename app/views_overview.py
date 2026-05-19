@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from app.charts import cumulative_trend_chart, monthly_distance_chart, sport_donut_chart
+from app.charts import cumulative_trend_chart, period_metric_chart, sport_donut_chart
 from app.formatters import fmt_h, fmt_int, fmt_km, fmt_m, fmt_pct
 from app.theme import (
     card_html,
@@ -57,31 +57,40 @@ def _sport_legend_html(df) -> str:
     return f"<div class='sd-card-legend'>{items}</div>"
 
 
-def _month_axis_labels_html(df) -> str:
-    if df.empty or not {"year", "month_num"}.issubset(df.columns):
+def _period_axis_labels_html(df) -> str:
+    if df.empty:
         return ""
 
-    temp = df[["year", "month_num"]].dropna().drop_duplicates().copy()
-    if temp.empty:
-        return ""
+    if "period_label" in df.columns:
+        temp = df[["period_label", "period_sort"]].dropna().drop_duplicates().copy() if "period_sort" in df.columns else df[["period_label"]].dropna().drop_duplicates().copy()
+        if temp.empty:
+            return ""
+        if "period_sort" in temp.columns:
+            temp = temp.sort_values("period_sort")
+        labels = [f"<span>{str(x)}</span>" for x in temp["period_label"].astype(str).tolist()]
+    else:
+        if not {"year", "month_num"}.issubset(df.columns):
+            return ""
+        temp = df[["year", "month_num"]].dropna().drop_duplicates().copy()
+        if temp.empty:
+            return ""
 
-    temp["year"] = temp["year"].astype(int)
-    temp["month_num"] = temp["month_num"].astype(int)
+        temp["year"] = temp["year"].astype(int)
+        temp["month_num"] = temp["month_num"].astype(int)
 
-    month_names = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
-    min_year = int(temp["year"].min())
-    max_year = int(temp["year"].max())
-    max_month = int(temp.loc[temp["year"] == max_year, "month_num"].max())
+        month_names = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+        min_year = int(temp["year"].min())
+        max_year = int(temp["year"].max())
+        max_month = int(temp.loc[temp["year"] == max_year, "month_num"].max())
 
-    labels: list[str] = []
-    for year in range(min_year, max_year + 1):
-        end_month = 12 if year < max_year else max_month
-        for month_num in range(1, end_month + 1):
-            labels.append(f"<span>{month_names[month_num - 1]}<br>{year}</span>")
+        labels: list[str] = []
+        for year in range(min_year, max_year + 1):
+            end_month = 12 if year < max_year else max_month
+            for month_num in range(1, end_month + 1):
+                labels.append(f"<span>{month_names[month_num - 1]}<br>{year}</span>")
 
     cols = max(1, len(labels))
     return f"<div class='sd-custom-xaxis' style='grid-template-columns: repeat({cols}, minmax(0, 1fr));'>" + "".join(labels) + "</div>"
-
 
 def _plotly_fragment(fig, height: int) -> str:
     return fig.to_html(
@@ -93,7 +102,7 @@ def _plotly_fragment(fig, height: int) -> str:
     )
 
 
-def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
+def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", control_html: str = "", min_width: int = 820, height: int = PANEL_HEIGHT) -> None:
     chart_height = 120
     html_fragment = _plotly_fragment(fig, chart_height)
     components.html(
@@ -144,8 +153,8 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
             }}
         </style>
         <div class="sd-card-panel">
-            <div class="sd-card-title">Andamento mensile</div>
-            <div class="sd-card-subtitle">Distanza aggregata per mese e sport</div>
+            <div class="sd-card-top"><div><div class="sd-card-title">Andamento mensile</div></div>{control_html}</div>
+            <div class="sd-card-subtitle">Dati aggregati per periodo e sport</div>
             {legend_html}
             <div class="sd-scroll-shell">
                 <div class="sd-scroll-inner">{html_fragment}{axis_labels_html}</div>
@@ -156,6 +165,46 @@ def _render_monthly_card(fig, legend_html: str, axis_labels_html: str = "", min_
         scrolling=False,
     )
 
+
+
+def _render_period_chart_scroll(fig, axis_labels_html: str = "", min_width: int = 820, chart_height: int = 126) -> None:
+    html_fragment = _plotly_fragment(fig, chart_height)
+    components.html(
+        f"""
+        <style>
+            .sd-scroll-shell {{
+                width: 100%;
+                height: 176px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: 14px;
+                box-sizing: border-box;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
+            }}
+            .sd-scroll-shell::-webkit-scrollbar {{height: 10px;}}
+            .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
+            .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
+            .sd-scroll-inner {{min-width: {min_width}px; height: {chart_height + 50}px;}}
+            .sd-custom-xaxis {{
+                display: grid;
+                margin-left: 48px;
+                margin-right: 12px;
+                margin-top: 0;
+                color: #AFC0D2;
+                font-size: 9px;
+                line-height: 1.15;
+                text-align: center;
+                white-space: normal;
+            }}
+        </style>
+        <div class="sd-scroll-shell">
+            <div class="sd-scroll-inner">{html_fragment}{axis_labels_html}</div>
+        </div>
+        """,
+        height=176,
+        scrolling=False,
+    )
 
 def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
     chart_height = 230
@@ -203,6 +252,17 @@ def _activity_dataframe_from_data(data: dict) -> pd.DataFrame | None:
         if isinstance(value, pd.DataFrame) and not value.empty:
             return value
     return None
+
+
+def _weekly_sport_df_from_data(data: dict) -> pd.DataFrame:
+    df = _activity_dataframe_from_data(data)
+    if df is None:
+        return pd.DataFrame()
+    try:
+        from app.metrics import weekly_by_sport
+        return weekly_by_sport(df)
+    except Exception:
+        return pd.DataFrame()
 
 
 def _current_training_week_streak(data: dict) -> int | None:
@@ -619,6 +679,22 @@ def _inject_overview_final_css() -> None:
         .sd-bottom-kpi-label { color: #AFC0D2; font-size: .62rem; line-height: 1; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
         .sd-bottom-kpi-value { color: #F7FAFF; font-size: .95rem; font-weight: 850; margin-top: 5px; letter-spacing: -.025em; }
         .sd-bottom-kpi-sub { color: #D8E6F6; font-size: .68rem; margin-top: 2px; }
+        .sd-trend-controls-wrap { margin: 0; }
+        .sd-trend-controls-wrap label { color: #AFC0D2 !important; font-size: .56rem !important; text-transform: uppercase; letter-spacing: .08em; }
+        .sd-trend-panel-title { color:#F7FAFF; font-size:1.03rem; font-weight:850; letter-spacing:-0.035em; margin: 0 0 16px; }
+        .sd-trend-panel-subtitle { color:#AFC0D2; font-size:.82rem; margin:0 0 14px; }
+        div[data-testid="stVerticalBlockBorderWrapper"] {
+            border: 1px solid rgba(216,230,255,0.095) !important;
+            border-radius: 18px !important;
+            background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.055), transparent 18rem), rgba(10,20,34,0.92) !important;
+            padding: 20px 24px 13px !important;
+            min-height: 345px !important;
+            box-sizing: border-box !important;
+        }
+        /* Hide the old global Metric Trend filter row item; the control now lives inside the trend card. */
+        div[data-testid="stHorizontalBlock"]:has(> div[data-testid="column"]:nth-child(1) div[data-baseweb="select"]):has(> div[data-testid="column"]:nth-child(2) div[data-baseweb="select"]):has(> div[data-testid="column"]:nth-child(3) div[data-baseweb="select"]) > div[data-testid="column"]:nth-child(3) {
+            display: none !important;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -673,14 +749,55 @@ def render_overview(data: dict) -> None:
     left, middle, right = st.columns([1.64, 1.24, 0.82], gap="small")
 
     with left:
-        if monthly_sport_df.empty:
-            _empty()
-        else:
-            legend_html = _sport_legend_html(monthly_sport_df)
-            fig = monthly_distance_chart(monthly_sport_df)
-            month_count = max(1, monthly_sport_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(monthly_sport_df.columns) else 12
-            axis_labels_html = _month_axis_labels_html(monthly_sport_df)
-            _render_monthly_card(fig, legend_html, axis_labels_html, min_width=max(640, month_count * 34), height=PANEL_HEIGHT)
+        metric_options = {
+            "Distanza": "distance_km",
+            "Tempo": "moving_time_h",
+            "Dislivello": "elevation_m",
+            "Attività": "activities",
+        }
+        with st.container(border=True):
+            header_left, header_right = st.columns([0.58, 0.42], gap="small")
+            with header_left:
+                st.markdown("<div class='sd-trend-panel-title'>Andamento mensile</div>", unsafe_allow_html=True)
+            with header_right:
+                st.markdown("<div class='sd-trend-controls-wrap'>", unsafe_allow_html=True)
+                ctrl_a, ctrl_b = st.columns(2, gap="small")
+                with ctrl_a:
+                    selected_metric_label = st.selectbox(
+                        "Metrica trend",
+                        list(metric_options.keys()),
+                        index=0,
+                        key="overview_inline_metric_trend",
+                    )
+                with ctrl_b:
+                    selected_granularity = st.selectbox(
+                        "Vista trend",
+                        ["Mensile", "Settimanale"],
+                        index=0,
+                        key="overview_inline_trend_granularity",
+                    )
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("<div class='sd-trend-panel-subtitle'>Dati aggregati per periodo e sport</div>", unsafe_allow_html=True)
+
+            value_col = metric_options[selected_metric_label]
+            chart_df = monthly_sport_df
+            if selected_granularity == "Settimanale":
+                weekly_df = _weekly_sport_df_from_data(data)
+                if not weekly_df.empty:
+                    chart_df = weekly_df
+
+            if chart_df.empty:
+                _empty()
+            else:
+                st.markdown(_sport_legend_html(chart_df), unsafe_allow_html=True)
+                fig = period_metric_chart(chart_df, value_col=value_col)
+                if "period_label" in chart_df.columns:
+                    period_count = max(1, chart_df["period_label"].drop_duplicates().shape[0])
+                else:
+                    period_count = max(1, chart_df[["year", "month_num"]].drop_duplicates().shape[0]) if {"year", "month_num"}.issubset(chart_df.columns) else 12
+                axis_labels_html = _period_axis_labels_html(chart_df)
+                _render_period_chart_scroll(fig, axis_labels_html, min_width=max(640, period_count * 44), chart_height=126)
 
     with middle:
         if sport_summary_df.empty:

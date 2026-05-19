@@ -154,7 +154,7 @@ def period_metric_chart(period_df: pd.DataFrame, value_col: str = "distance_km")
     fig.update_traces(
         marker_line_width=0,
         opacity=0.92,
-        width=0.30,
+        width=0.48,
         hovertemplate=f"%{{customdata[0]}}<br>%{{customdata[1]}}<br>%{{y:.1f}} {unit}<extra></extra>",
         showlegend=False,
     )
@@ -171,8 +171,8 @@ def period_metric_chart(period_df: pd.DataFrame, value_col: str = "distance_km")
     )
     fig.update_yaxes(fixedrange=True)
     fig.update_layout(
-        bargap=0.60,
-        bargroupgap=0.06,
+        bargap=0.36,
+        bargroupgap=0.04,
         showlegend=False,
     )
     fig = plot_style(fig, height=120, show_legend=False)
