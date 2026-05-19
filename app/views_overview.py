@@ -297,23 +297,24 @@ def _compact_overview_card(title: str, subtitle: str, body_html: str, height: in
 
 
 
+ANNUAL_DISTANCE_TARGETS_KM = {
+    "Ciclismo": 4055.0,
+    "VirtualRide": 870.0,
+    "Corsa": 45.0,
+    "Escursionismo": 30.0,
+}
+
+
 def _annual_goal_values(data: dict, kpis: dict) -> tuple[float, float, float]:
+    """Return current distance, fixed annual target and progress percentage.
+
+    The annual target is intentionally fixed for the whole year and split by
+    the current sport mix selected by the user:
+    Ciclismo 4,055 km, VirtualRide 870 km, Corsa 45 km, Escursionismo 30 km.
+    This avoids a moving target and avoids using the previous year as baseline.
+    """
     current_km = float(kpis.get("distance_km", 0.0) or 0.0)
-    candidates = [data.get("annual_goal_km"), data.get("target_km")]
-    for key in ("projection", "total_projection", "projection_summary", "proj_summary"):
-        value = data.get(key)
-        if isinstance(value, dict):
-            candidates.extend([value.get("target_km"), value.get("annual_goal_km"), value.get("goal_km")])
-    target_km = 0.0
-    for value in candidates:
-        try:
-            if value is not None and float(value) > 0:
-                target_km = float(value)
-                break
-        except (TypeError, ValueError):
-            continue
-    if target_km <= 0:
-        target_km = max(3300.0, current_km * 1.2)
+    target_km = float(sum(ANNUAL_DISTANCE_TARGETS_KM.values()))
     progress_pct = min(100.0, (current_km / target_km) * 100.0) if target_km > 0 else 0.0
     return current_km, target_km, progress_pct
 
