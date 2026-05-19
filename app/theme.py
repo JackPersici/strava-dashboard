@@ -453,7 +453,7 @@ def inject_global_css() -> None:
 
 
         /* Native Streamlit bordered container used by the trend panel */
-        div[data-testid="stVerticalBlockBorderWrapper"] {
+        div[data-testid="stVerticalBlockBorderWrapper"] {{
             background:
                 radial-gradient(circle at 35% 0%, rgba(125,183,255,0.050), transparent 18rem),
                 rgba(10,20,34,0.92) !important;
@@ -462,12 +462,12 @@ def inject_global_css() -> None:
             box-shadow: 0 8px 22px rgba(0,0,0,0.10) !important;
             padding: 14px 20px 9px 20px !important;
             overflow: hidden !important;
-        }
-        div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"] > div {{
             padding: 0 !important;
             gap: 0.45rem !important;
-        }
-        .sd-native-trend-title {
+        }}
+        .sd-native-trend-title {{
             color: #F7FAFF;
             font-size: 1.03rem;
             font-weight: 850;
@@ -476,34 +476,34 @@ def inject_global_css() -> None:
             padding-top: 18px;
             margin: 0;
             white-space: nowrap;
-        }
+        }}
         div[data-testid="stVerticalBlockBorderWrapper"] label,
-        div[data-testid="stVerticalBlockBorderWrapper"] label p {
+        div[data-testid="stVerticalBlockBorderWrapper"] label p {{
             color: #AFC0D2 !important;
             font-size: 0.63rem !important;
             font-weight: 760 !important;
             letter-spacing: 0.14em !important;
             text-transform: uppercase !important;
             margin-bottom: 3px !important;
-        }
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-baseweb="select"] {
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-baseweb="select"] {{
             min-width: 112px !important;
-        }
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-baseweb="select"] > div {
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-baseweb="select"] > div {{
             min-height: 35px !important;
             height: 35px !important;
             border-radius: 12px !important;
             background-color: rgba(13,27,45,0.96) !important;
             border-color: rgba(216,230,255,0.12) !important;
             font-size: 0.78rem !important;
-        }
+        }}
         div[data-testid="stVerticalBlockBorderWrapper"] div[data-baseweb="select"] span,
-        div[data-testid="stVerticalBlockBorderWrapper"] div[data-baseweb="select"] div {
+        div[data-testid="stVerticalBlockBorderWrapper"] div[data-baseweb="select"] div {{
             font-size: 0.78rem !important;
-        }
-        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {{
             align-items: start !important;
-        }
+        }}
 
         </style>
         """,
