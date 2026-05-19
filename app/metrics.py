@@ -184,6 +184,42 @@ def _sport_col(df: pd.DataFrame) -> str:
     return "sport_grouped" if "sport_grouped" in df.columns else "sport_label"
 
 
+
+def current_training_week_streak(df: pd.DataFrame) -> int:
+    """Count consecutive training weeks ending at the latest activity week.
+
+    This is activity-week based, not calendar-year based: if the latest activity
+    is in ISO week N and there are activities in N-1, N-2, ... the streak grows.
+    It returns 0 when no activity-level date is available.
+    """
+    if df.empty:
+        return 0
+
+    date_col = None
+    for candidate in ("start_date_local", "start_date", "day"):
+        if candidate in df.columns:
+            date_col = candidate
+            break
+    if date_col is None:
+        return 0
+
+    dates = pd.to_datetime(df[date_col], errors="coerce").dropna()
+    if dates.empty:
+        return 0
+
+    weeks = sorted(dates.dt.to_period("W-MON").dropna().unique())
+    if not weeks:
+        return 0
+
+    week_set = set(weeks)
+    cursor = weeks[-1]
+    streak = 1
+    while (cursor - 1) in week_set:
+        streak += 1
+        cursor = cursor - 1
+    return int(streak)
+
+
 def kpi_summary(df: pd.DataFrame) -> dict:
     if df.empty:
         return {
@@ -194,6 +230,7 @@ def kpi_summary(df: pd.DataFrame) -> dict:
             "avg_distance_km": 0.0,
             "avg_time_h": 0.0,
             "avg_elevation_m": 0.0,
+            "weekly_streak": 0,
         }
 
     return {
@@ -204,6 +241,7 @@ def kpi_summary(df: pd.DataFrame) -> dict:
         "avg_distance_km": float(df["distance_km"].mean()),
         "avg_time_h": float(df["moving_time_h"].mean()),
         "avg_elevation_m": float(df["elevation_m"].mean()),
+        "weekly_streak": current_training_week_streak(df),
     }
 
 

@@ -275,12 +275,12 @@ def _render_monthly_card(
                 )
             )
 
-    metric_buttons = "".join(
-        f"<button type='button' class='sd-select-option' data-value='{_esc(label)}'>{_esc(label)}</button>"
+    metric_options_html = "".join(
+        f"<option value='{_esc(label)}' {'selected' if label == 'Distanza' else ''}>{_esc(label)}</option>"
         for label in metric_options
     )
-    view_buttons = "".join(
-        f"<button type='button' class='sd-select-option' data-value='{_esc(label)}'>{_esc(label)}</button>"
+    view_options_html = "".join(
+        f"<option value='{_esc(label)}' {'selected' if label == 'Mensile' else ''}>{_esc(label)}</option>"
         for label in view_options
     )
 
@@ -299,30 +299,18 @@ def _render_monthly_card(
                 color: #F7FAFF;
                 font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
             }}
-            .sd-card-top {{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}}
-            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin: 0; white-space:nowrap;min-width:0;}}
+            .sd-card-top {{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}}
+            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin: 18px 0 0 0; white-space:nowrap;min-width:0;}}
             .sd-control-row {{display:flex;align-items:flex-end;gap:8px;justify-content:flex-end;flex:0 0 auto;}}
             .sd-control {{width:110px;position:relative;}}
             .sd-control.small {{width:104px;}}
-            .sd-control-label {{font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:#AFC0D2;font-weight:820;margin-bottom:4px;white-space:nowrap;}}
-            .sd-select {{position:relative;}}
-            .sd-select-trigger {{
+            .sd-control-label {{font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;color:#AFC0D2;font-weight:820;margin-bottom:4px;white-space:nowrap;}}
+            .sd-native-select {{
                 width:100%;height:30px;border-radius:11px;border:1px solid rgba(216,230,255,.12);
-                background:rgba(7,16,28,.60);color:#F7FAFF;display:flex;align-items:center;justify-content:space-between;
-                padding:0 9px;font-size:.70rem;font-weight:720;box-sizing:border-box;cursor:pointer;
+                background:#0A1626;color:#F7FAFF;padding:0 24px 0 9px;font-size:.68rem;font-weight:760;
+                box-sizing:border-box;outline:none;cursor:pointer;appearance:auto;-webkit-appearance:menulist;
             }}
-            .sd-select-trigger span:first-child {{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}}
-            .sd-chevron {{color:#7F93A9;font-size:.80rem;margin-left:5px;}}
-            .sd-select-menu {{
-                display:none;position:absolute;right:0;top:35px;z-index:10;width:100%;border-radius:12px;
-                border:1px solid rgba(216,230,255,.12);background:#0B1626;box-shadow:0 16px 30px rgba(0,0,0,.35);overflow:hidden;
-            }}
-            .sd-select.open .sd-select-menu {{display:block;}}
-            .sd-select-option {{
-                width:100%;border:0;background:transparent;color:#D8E6F6;text-align:left;padding:8px 10px;
-                font-size:.70rem;font-weight:720;cursor:pointer;
-            }}
-            .sd-select-option:hover, .sd-select-option.active {{background:rgba(240,90,34,.16);color:#FFFFFF;}}
+            .sd-native-select:focus {{border-color:rgba(252,76,2,.55);box-shadow:0 0 0 2px rgba(252,76,2,.10);}}
             .sd-card-panel .sd-card-legend {{display:flex !important;flex-wrap:wrap;gap:9px 14px;align-items:center;margin:0 0 7px 0;font-size:.72rem;color:#EAF2FF;line-height:1.15;}}
             .sd-card-panel .sd-card-legend-item {{display:inline-flex !important;align-items:center;gap:7px;white-space:nowrap;font-weight:720;}}
             .sd-card-panel .sd-card-dot {{width:9px;height:9px;min-width:9px;border-radius:50%;display:inline-block;box-shadow:0 0 0 2px rgba(255,255,255,0.035);}}
@@ -343,21 +331,15 @@ def _render_monthly_card(
         </style>
         <div class="sd-card-panel">
             <div class="sd-card-top">
-                <div class="sd-card-title">Andamento mensile</div>
+                <div class="sd-card-title" id="sd-trend-title">Andamento mensile</div>
                 <div class="sd-control-row">
                     <div class="sd-control">
                         <div class="sd-control-label">Metrica</div>
-                        <div class="sd-select" data-kind="metric">
-                            <button type="button" class="sd-select-trigger"><span>Distanza</span><span class="sd-chevron">⌄</span></button>
-                            <div class="sd-select-menu">{metric_buttons}</div>
-                        </div>
+                        <select class="sd-native-select" id="sd-metric-select" aria-label="Metrica trend">{metric_options_html}</select>
                     </div>
                     <div class="sd-control small">
                         <div class="sd-control-label">Vista</div>
-                        <div class="sd-select" data-kind="view">
-                            <button type="button" class="sd-select-trigger"><span>Mensile</span><span class="sd-chevron">⌄</span></button>
-                            <div class="sd-select-menu">{view_buttons}</div>
-                        </div>
+                        <select class="sd-native-select" id="sd-view-select" aria-label="Vista trend">{view_options_html}</select>
                     </div>
                 </div>
             </div>
@@ -367,38 +349,19 @@ def _render_monthly_card(
         <script>
         (function() {{
             const root = document.currentScript.previousElementSibling;
-            let metric = 'Distanza';
-            let view = 'Mensile';
+            const metricSelect = root.querySelector('#sd-metric-select');
+            const viewSelect = root.querySelector('#sd-view-select');
+            const title = root.querySelector('#sd-trend-title');
             function setActive() {{
+                const metric = metricSelect.value;
+                const view = viewSelect.value;
+                if (title) title.textContent = view === 'Settimanale' ? 'Andamento settimanale' : 'Andamento mensile';
                 root.querySelectorAll('.sd-chart-variant').forEach(el => {{
                     el.classList.toggle('is-active', el.dataset.metric === metric && el.dataset.view === view);
                 }});
-                root.querySelectorAll('.sd-select').forEach(sel => {{
-                    const kind = sel.dataset.kind;
-                    const val = kind === 'metric' ? metric : view;
-                    sel.querySelector('.sd-select-trigger span:first-child').textContent = val;
-                    sel.querySelectorAll('.sd-select-option').forEach(opt => opt.classList.toggle('active', opt.dataset.value === val));
-                }});
             }}
-            root.querySelectorAll('.sd-select-trigger').forEach(btn => {{
-                btn.addEventListener('click', (e) => {{
-                    const sel = btn.closest('.sd-select');
-                    const wasOpen = sel.classList.contains('open');
-                    root.querySelectorAll('.sd-select').forEach(x => x.classList.remove('open'));
-                    if (!wasOpen) sel.classList.add('open');
-                    e.stopPropagation();
-                }});
-            }});
-            root.querySelectorAll('.sd-select-option').forEach(btn => {{
-                btn.addEventListener('click', () => {{
-                    const sel = btn.closest('.sd-select');
-                    if (sel.dataset.kind === 'metric') metric = btn.dataset.value;
-                    if (sel.dataset.kind === 'view') view = btn.dataset.value;
-                    sel.classList.remove('open');
-                    setActive();
-                }});
-            }});
-            document.addEventListener('click', () => root.querySelectorAll('.sd-select').forEach(x => x.classList.remove('open')));
+            metricSelect.addEventListener('change', setActive);
+            viewSelect.addEventListener('change', setActive);
             setActive();
         }})();
         </script>
@@ -490,8 +453,10 @@ def _current_training_week_streak(data: dict) -> int | None:
 
 
 def _key_numbers_html(data: dict, kpis: dict) -> str:
-    streak = _current_training_week_streak(data)
-    streak_value = "-" if streak is None else str(streak)
+    streak = kpis.get("weekly_streak", None)
+    if streak is None:
+        streak = _current_training_week_streak(data)
+    streak_value = "-" if streak is None else str(int(streak))
     streak_subtitle = "settimane consecutive" if streak != 1 else "settimana consecutiva"
 
     rows = [
