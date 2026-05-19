@@ -216,7 +216,7 @@ def _period_bar_chart(period_df: pd.DataFrame, metric_col: str, view: str) -> tu
     fig.update_traces(
         marker_line_width=0,
         opacity=0.92,
-        width=0.30 if view == "Mensile" else 0.48,
+        width=0.42 if view == "Mensile" else 0.58,
         hovertemplate=f"%{{customdata[0]}}<br>%{{customdata[1]}}<br>%{{y:.1f}} {unit}<extra></extra>",
         showlegend=False,
     )
@@ -229,9 +229,9 @@ def _period_bar_chart(period_df: pd.DataFrame, metric_col: str, view: str) -> tu
         range=[-0.5, max(0.5, len(period_order) - 0.5)],
     )
     fig.update_yaxes(fixedrange=True)
-    fig.update_layout(bargap=0.52 if view == "Mensile" else 0.34, bargroupgap=0.08, showlegend=False)
+    fig.update_layout(bargap=0.40 if view == "Mensile" else 0.24, bargroupgap=0.08, showlegend=False)
     from app.charts import plot_style
-    fig = plot_style(fig, height=122, show_legend=False)
+    fig = plot_style(fig, height=130, show_legend=False)
     fig.update_layout(margin=dict(l=48, r=12, t=0, b=0))
     fig.update_yaxes(title_standoff=8, ticklabelposition="outside", automargin=True)
     fig.update_xaxes(automargin=True)
@@ -252,7 +252,7 @@ def _render_monthly_card(
     legend_html: str,
     height: int = PANEL_HEIGHT,
 ) -> None:
-    chart_height = 122
+    chart_height = 130
     chart_blocks: list[str] = []
     metric_options = list(TREND_METRICS.keys())
     view_options = TREND_VIEWS
@@ -299,45 +299,45 @@ def _render_monthly_card(
                 color: #F7FAFF;
                 font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
             }}
-            .sd-card-top {{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px;}}
-            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin: 6px 0 0; white-space:nowrap;}}
-            .sd-control-row {{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end;}}
-            .sd-control {{width:142px;position:relative;}}
-            .sd-control.small {{width:132px;}}
-            .sd-control-label {{font-size:.63rem;letter-spacing:.10em;text-transform:uppercase;color:#AFC0D2;font-weight:820;margin-bottom:6px;}}
+            .sd-card-top {{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}}
+            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin: 0; white-space:nowrap;min-width:0;}}
+            .sd-control-row {{display:flex;align-items:flex-end;gap:8px;justify-content:flex-end;flex:0 0 auto;}}
+            .sd-control {{width:110px;position:relative;}}
+            .sd-control.small {{width:104px;}}
+            .sd-control-label {{font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:#AFC0D2;font-weight:820;margin-bottom:4px;white-space:nowrap;}}
             .sd-select {{position:relative;}}
             .sd-select-trigger {{
-                width:100%;height:34px;border-radius:12px;border:1px solid rgba(216,230,255,.12);
+                width:100%;height:30px;border-radius:11px;border:1px solid rgba(216,230,255,.12);
                 background:rgba(7,16,28,.60);color:#F7FAFF;display:flex;align-items:center;justify-content:space-between;
-                padding:0 11px;font-size:.78rem;font-weight:720;box-sizing:border-box;cursor:pointer;
+                padding:0 9px;font-size:.70rem;font-weight:720;box-sizing:border-box;cursor:pointer;
             }}
             .sd-select-trigger span:first-child {{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}}
-            .sd-chevron {{color:#7F93A9;font-size:.88rem;margin-left:8px;}}
+            .sd-chevron {{color:#7F93A9;font-size:.80rem;margin-left:5px;}}
             .sd-select-menu {{
-                display:none;position:absolute;right:0;top:40px;z-index:10;width:100%;border-radius:12px;
+                display:none;position:absolute;right:0;top:35px;z-index:10;width:100%;border-radius:12px;
                 border:1px solid rgba(216,230,255,.12);background:#0B1626;box-shadow:0 16px 30px rgba(0,0,0,.35);overflow:hidden;
             }}
             .sd-select.open .sd-select-menu {{display:block;}}
             .sd-select-option {{
                 width:100%;border:0;background:transparent;color:#D8E6F6;text-align:left;padding:8px 10px;
-                font-size:.76rem;font-weight:720;cursor:pointer;
+                font-size:.70rem;font-weight:720;cursor:pointer;
             }}
             .sd-select-option:hover, .sd-select-option.active {{background:rgba(240,90,34,.16);color:#FFFFFF;}}
-            .sd-card-legend {{display: flex; flex-wrap: wrap; gap: 13px 18px; align-items: center; margin-bottom: 8px; font-size: .78rem; color: #EAF2FF;}}
-            .sd-card-legend-item {{display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;}}
-            .sd-card-dot {{width: 10px; height: 10px; min-width: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.035);}}
+            .sd-card-panel .sd-card-legend {{display:flex !important;flex-wrap:wrap;gap:9px 14px;align-items:center;margin:0 0 7px 0;font-size:.72rem;color:#EAF2FF;line-height:1.15;}}
+            .sd-card-panel .sd-card-legend-item {{display:inline-flex !important;align-items:center;gap:7px;white-space:nowrap;font-weight:720;}}
+            .sd-card-panel .sd-card-dot {{width:9px;height:9px;min-width:9px;border-radius:50%;display:inline-block;box-shadow:0 0 0 2px rgba(255,255,255,0.035);}}
             .sd-chart-variant {{display:none;}}
             .sd-chart-variant.is-active {{display:block;}}
             .sd-scroll-shell {{
-                width: 100%;height: 178px;overflow-x: auto;overflow-y: hidden;padding-bottom: 13px;box-sizing: border-box;
+                width: 100%;height: 186px;overflow-x: auto;overflow-y: hidden;padding-bottom: 12px;box-sizing: border-box;
                 scrollbar-width: thin;scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
             }}
             .sd-scroll-shell::-webkit-scrollbar {{height: 9px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{height: {chart_height + 50}px;}}
+            .sd-scroll-inner {{height: {chart_height + 46}px;}}
             .sd-custom-xaxis {{
-                display: grid;margin-left: 48px;margin-right: 12px;margin-top: 0;color: #AFC0D2;font-size: 9px;
+                display:grid;margin-left:48px;margin-right:12px;margin-top:-2px;color:#AFC0D2;font-size:8.5px;
                 line-height: 1.15;text-align: center;white-space: normal;
             }}
         </style>
@@ -346,14 +346,14 @@ def _render_monthly_card(
                 <div class="sd-card-title">Andamento mensile</div>
                 <div class="sd-control-row">
                     <div class="sd-control">
-                        <div class="sd-control-label">Metrica trend</div>
+                        <div class="sd-control-label">Metrica</div>
                         <div class="sd-select" data-kind="metric">
                             <button type="button" class="sd-select-trigger"><span>Distanza</span><span class="sd-chevron">⌄</span></button>
                             <div class="sd-select-menu">{metric_buttons}</div>
                         </div>
                     </div>
                     <div class="sd-control small">
-                        <div class="sd-control-label">Vista trend</div>
+                        <div class="sd-control-label">Vista</div>
                         <div class="sd-select" data-kind="view">
                             <button type="button" class="sd-select-trigger"><span>Mensile</span><span class="sd-chevron">⌄</span></button>
                             <div class="sd-select-menu">{view_buttons}</div>
