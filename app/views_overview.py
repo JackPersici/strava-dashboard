@@ -604,13 +604,28 @@ def _performance_card_html(bp: pd.DataFrame, height: int = 258) -> str:
 def _zones_card_html(zones: pd.DataFrame, height: int = 258) -> str:
     if zones.empty:
         body = "<div class='big-empty'>Nessun dato disponibile.</div>"
+        suffix = "tempo"
     else:
         colors = ["#3B82F6", "#4ADE80", "#FBBF24", "#FB923C", "#EF4444"]
         rows: list[str] = []
-        for idx, (_, row) in enumerate(zones.head(5).iterrows()):
+        zone_rows = zones.head(5).copy()
+        source = str(zone_rows["source"].dropna().iloc[0]) if "source" in zone_rows.columns and not zone_rows["source"].dropna().empty else ""
+        suffix = "tempo HR" if source == "hr_stream" else "tempo"
+
+        # Le zone cardio sono mutuamente esclusive: il valore corretto e' la
+        # quota di tempo in zona. La somma dei valori mostrati resta circa 100%.
+        raw_time_pct = pd.to_numeric(zone_rows.get("time_pct", 0.0), errors="coerce").fillna(0.0)
+        total_pct = float(raw_time_pct.sum())
+
+        for idx, (_, row) in enumerate(zone_rows.iterrows()):
             zone = _esc(row.get("zone", "Zona"))
-            activities = float(row.get("activities_pct", 0.0) or 0.0)
-            width = max(2.0, min(100.0, activities))
+            time_pct = float(row.get("time_pct", 0.0) or 0.0)
+            display_pct = time_pct
+            if total_pct > 0 and total_pct > 100.5:
+                # Safety guard per cache vecchie/corrotte: normalizza a 100
+                # invece di mostrare percentuali indipendenti impossibili.
+                display_pct = time_pct / total_pct * 100.0
+            width = max(2.0, min(100.0, display_pct))
             color = colors[idx % len(colors)]
             rows.append(
                 "<div class='sd-zone-v2-row'>"
@@ -618,14 +633,14 @@ def _zones_card_html(zones: pd.DataFrame, height: int = 258) -> str:
                 "<div class='sd-zone-v2-track'>"
                 f"<div class='sd-zone-v2-fill' style='width:{width:.1f}%;background:{color};'></div>"
                 "</div>"
-                f"<div class='sd-zone-v2-num'>{activities:.0f}%</div>"
+                f"<div class='sd-zone-v2-num'>{display_pct:.0f}%</div>"
                 "</div>"
             )
         body = "".join(rows)
     return f'''
     <div class="sd-bottom-html-card" style="height:{height}px;">
         <div class="sd-bottom-html-head compact">
-            <h3>Zone di frequenza <span>(attività)</span></h3>
+            <h3>Zone di frequenza <span>({suffix})</span></h3>
         </div>
         <div class="sd-bottom-html-body">{body}</div>
     </div>
