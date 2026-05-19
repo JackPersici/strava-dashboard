@@ -331,7 +331,7 @@ def _render_monthly_card(
     # Python widgets and can trigger reruns. Avoid wrapping native widgets in
     # raw HTML divs: Streamlit cannot place widgets inside those divs reliably.
     with st.container(border=True):
-        h1, h2, h3 = st.columns([1.30, 0.48, 0.48], gap="small")
+        h1, h2, h3 = st.columns([1.05, 0.62, 0.62], gap="small")
         with h1:
             title = "Andamento settimanale" if st.session_state.get("overview_trend_view") == "Settimanale" else "Andamento mensile"
             st.markdown(f"<div class='sd-native-trend-title'>{_esc(title)}</div>", unsafe_allow_html=True)
