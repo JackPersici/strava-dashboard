@@ -247,129 +247,117 @@ def _plotly_fragment(fig, height: int) -> str:
     )
 
 
-def _render_monthly_card(
-    chart_variants: dict[tuple[str, str], tuple[go.Figure, list[str], int]],
-    legend_html: str,
-    height: int = PANEL_HEIGHT,
-) -> None:
-    chart_height = 130
-    chart_blocks: list[str] = []
-    metric_options = list(TREND_METRICS.keys())
-    view_options = TREND_VIEWS
 
-    for metric_label in metric_options:
-        for view_label in view_options:
-            fig, labels, min_width = chart_variants.get((metric_label, view_label), (go.Figure(), [], 640))
-            html_fragment = _plotly_fragment(fig, chart_height)
-            axis_labels_html = _period_axis_labels_html(labels)
-            active = " is-active" if metric_label == "Distanza" and view_label == "Mensile" else ""
-            chart_blocks.append(
-                '<div class="sd-chart-variant{}" data-metric="{}" data-view="{}">'
-                '<div class="sd-scroll-shell"><div class="sd-scroll-inner" style="min-width:{}px;">{}{}</div></div></div>'.format(
-                    active,
-                    _esc(metric_label),
-                    _esc(view_label),
-                    min_width,
-                    html_fragment,
-                    axis_labels_html,
-                )
-            )
+def _render_trend_chart_fragment(fig, labels: list[str], min_width: int, height: int = PANEL_HEIGHT) -> None:
+    """Render only the selected trend chart in a horizontal scroll area.
 
-    metric_options_html = "".join(
-        f"<option value='{_esc(label)}' {'selected' if label == 'Distanza' else ''}>{_esc(label)}</option>"
-        for label in metric_options
-    )
-    view_options_html = "".join(
-        f"<option value='{_esc(label)}' {'selected' if label == 'Mensile' else ''}>{_esc(label)}</option>"
-        for label in view_options
-    )
-
+    The metric/view controls are native Streamlit widgets outside this iframe,
+    so the chart updates by rerunning Python instead of relying on JavaScript
+    inside the component.
+    """
+    chart_height = 122
+    html_fragment = _plotly_fragment(fig, chart_height)
+    axis_labels_html = _period_axis_labels_html(labels)
     components.html(
         f"""
         <style>
-            .sd-card-panel {{
+            .sd-trend-chart-only {{
                 width: 100%;
                 height: {height}px;
                 box-sizing: border-box;
-                border: 1px solid rgba(216,230,255,0.095);
-                border-radius: 18px;
-                background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.055), transparent 18rem), rgba(10,20,34,0.92);
-                padding: 18px 24px 12px 24px;
                 overflow: hidden;
                 color: #F7FAFF;
                 font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
             }}
-            .sd-card-top {{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;}}
-            .sd-card-title {{font-size: 1.03rem; font-weight: 850; letter-spacing: -0.035em; margin: 18px 0 0 0; white-space:nowrap;min-width:0;}}
-            .sd-control-row {{display:flex;align-items:flex-end;gap:8px;justify-content:flex-end;flex:0 0 auto;}}
-            .sd-control {{width:110px;position:relative;}}
-            .sd-control.small {{width:104px;}}
-            .sd-control-label {{font-size:.52rem;letter-spacing:.08em;text-transform:uppercase;color:#AFC0D2;font-weight:820;margin-bottom:4px;white-space:nowrap;}}
-            .sd-native-select {{
-                width:100%;height:30px;border-radius:11px;border:1px solid rgba(216,230,255,.12);
-                background:#0A1626;color:#F7FAFF;padding:0 24px 0 9px;font-size:.68rem;font-weight:760;
-                box-sizing:border-box;outline:none;cursor:pointer;appearance:auto;-webkit-appearance:menulist;
-            }}
-            .sd-native-select:focus {{border-color:rgba(252,76,2,.55);box-shadow:0 0 0 2px rgba(252,76,2,.10);}}
-            .sd-card-panel .sd-card-legend {{display:flex !important;flex-wrap:wrap;gap:9px 14px;align-items:center;margin:0 0 7px 0;font-size:.72rem;color:#EAF2FF;line-height:1.15;}}
-            .sd-card-panel .sd-card-legend-item {{display:inline-flex !important;align-items:center;gap:7px;white-space:nowrap;font-weight:720;}}
-            .sd-card-panel .sd-card-dot {{width:9px;height:9px;min-width:9px;border-radius:50%;display:inline-block;box-shadow:0 0 0 2px rgba(255,255,255,0.035);}}
-            .sd-chart-variant {{display:none;}}
-            .sd-chart-variant.is-active {{display:block;}}
             .sd-scroll-shell {{
-                width: 100%;height: 186px;overflow-x: auto;overflow-y: hidden;padding-bottom: 12px;box-sizing: border-box;
-                scrollbar-width: thin;scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
+                width: 100%;
+                height: 178px;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding-bottom: 11px;
+                box-sizing: border-box;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(226,232,240,0.82) rgba(255,255,255,0.10);
             }}
             .sd-scroll-shell::-webkit-scrollbar {{height: 9px;}}
             .sd-scroll-shell::-webkit-scrollbar-track {{background: rgba(255,255,255,0.10); border-radius: 999px;}}
             .sd-scroll-shell::-webkit-scrollbar-thumb {{background: rgba(226,232,240,0.82); border-radius: 999px;}}
-            .sd-scroll-inner {{height: {chart_height + 46}px;}}
+            .sd-scroll-inner {{height: {chart_height + 45}px; min-width: {max(560, int(min_width))}px;}}
             .sd-custom-xaxis {{
-                display:grid;margin-left:48px;margin-right:12px;margin-top:-2px;color:#AFC0D2;font-size:8.5px;
-                line-height: 1.15;text-align: center;white-space: normal;
+                display:grid;
+                margin-left:48px;
+                margin-right:12px;
+                margin-top:-2px;
+                color:#AFC0D2;
+                font-size:8.5px;
+                line-height: 1.15;
+                text-align: center;
+                white-space: normal;
+            }}
+            .sd-empty-inline {{
+                height: 160px;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                color:#AFC0D2;
+                border:1px dashed rgba(216,230,255,.12);
+                border-radius:14px;
+                font-size:12px;
             }}
         </style>
-        <div class="sd-card-panel">
-            <div class="sd-card-top">
-                <div class="sd-card-title" id="sd-trend-title">Andamento mensile</div>
-                <div class="sd-control-row">
-                    <div class="sd-control">
-                        <div class="sd-control-label">Metrica</div>
-                        <select class="sd-native-select" id="sd-metric-select" aria-label="Metrica trend">{metric_options_html}</select>
-                    </div>
-                    <div class="sd-control small">
-                        <div class="sd-control-label">Vista</div>
-                        <select class="sd-native-select" id="sd-view-select" aria-label="Vista trend">{view_options_html}</select>
-                    </div>
-                </div>
+        <div class="sd-trend-chart-only">
+            <div class="sd-scroll-shell">
+                <div class="sd-scroll-inner">{html_fragment}{axis_labels_html}</div>
             </div>
-            {legend_html}
-            {''.join(chart_blocks)}
         </div>
-        <script>
-        (function() {{
-            const root = document.currentScript.previousElementSibling;
-            const metricSelect = root.querySelector('#sd-metric-select');
-            const viewSelect = root.querySelector('#sd-view-select');
-            const title = root.querySelector('#sd-trend-title');
-            function setActive() {{
-                const metric = metricSelect.value;
-                const view = viewSelect.value;
-                if (title) title.textContent = view === 'Settimanale' ? 'Andamento settimanale' : 'Andamento mensile';
-                root.querySelectorAll('.sd-chart-variant').forEach(el => {{
-                    el.classList.toggle('is-active', el.dataset.metric === metric && el.dataset.view === view);
-                }});
-            }}
-            metricSelect.addEventListener('change', setActive);
-            viewSelect.addEventListener('change', setActive);
-            setActive();
-        }})();
-        </script>
         """,
         height=height,
         scrolling=False,
     )
 
+
+def _render_monthly_card(
+    chart_variants: dict[tuple[str, str], tuple[go.Figure, list[str], int]],
+    legend_html: str,
+    height: int = PANEL_HEIGHT,
+) -> None:
+    metric_options = list(TREND_METRICS.keys())
+    view_options = TREND_VIEWS
+
+    if st.session_state.get("overview_trend_metric") not in metric_options:
+        st.session_state["overview_trend_metric"] = "Distanza"
+    if st.session_state.get("overview_trend_view") not in view_options:
+        st.session_state["overview_trend_view"] = "Mensile"
+
+    st.markdown("<div class='sd-native-trend-card'>", unsafe_allow_html=True)
+    h1, h2, h3 = st.columns([1.28, 0.58, 0.54], gap="small")
+    with h1:
+        title = "Andamento settimanale" if st.session_state.get("overview_trend_view") == "Settimanale" else "Andamento mensile"
+        st.markdown(f"<div class='sd-native-trend-title'>{_esc(title)}</div>", unsafe_allow_html=True)
+    with h2:
+        metric_label = st.selectbox(
+            "METRICA",
+            metric_options,
+            key="overview_trend_metric",
+            label_visibility="visible",
+        )
+    with h3:
+        view_label = st.selectbox(
+            "VISTA",
+            view_options,
+            key="overview_trend_view",
+            label_visibility="visible",
+        )
+
+    st.markdown(legend_html, unsafe_allow_html=True)
+
+    fig, labels, min_width = chart_variants.get((metric_label, view_label), (go.Figure(), [], 560))
+    if not labels:
+        st.markdown("<div class='big-empty'>Nessun dato disponibile per questa vista.</div>", unsafe_allow_html=True)
+    else:
+        _render_trend_chart_fragment(fig, labels, min_width, height=178)
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 def _render_donut_card(fig, height: int = PANEL_HEIGHT) -> None:
     chart_height = 230
@@ -412,7 +400,7 @@ def _activity_dataframe_from_data(data: dict) -> pd.DataFrame | None:
     intentionally defensive: if no activity-level dataframe is available, the
     streak widget degrades gracefully instead of breaking the dashboard.
     """
-    for key in ("filtered_df", "activities_df", "activity_df", "df", "raw_df"):
+    for key in ("filtered_df", "activities_df", "activity_df", "df", "raw_df", "activities", "filtered_activities", "raw_activities", "base_df", "current_df", "prepared_df"):
         value = data.get(key)
         if isinstance(value, pd.DataFrame) and not value.empty:
             return value
@@ -660,6 +648,73 @@ def _inject_overview_final_css() -> None:
     st.markdown(
         """
         <style>
+
+        .sd-native-trend-card {
+            height: 345px;
+            min-height: 345px;
+            box-sizing: border-box;
+            border: 1px solid rgba(216,230,255,0.095);
+            border-radius: 18px;
+            background: radial-gradient(circle at 20% 0%, rgba(125,183,255,0.055), transparent 18rem), rgba(10,20,34,0.92);
+            padding: 18px 24px 12px 24px;
+            overflow: hidden;
+        }
+        .sd-native-trend-title {
+            color: #F7FAFF;
+            font-size: 1.03rem;
+            font-weight: 850;
+            letter-spacing: -0.035em;
+            margin-top: 18px;
+            white-space: nowrap;
+        }
+        .sd-native-trend-card [data-testid="stSelectbox"] label,
+        .sd-native-trend-card label {
+            color: #AFC0D2 !important;
+            font-size: .52rem !important;
+            letter-spacing: .08em !important;
+            text-transform: uppercase !important;
+            font-weight: 820 !important;
+            margin-bottom: 4px !important;
+        }
+        .sd-native-trend-card [data-baseweb="select"] > div {
+            min-height: 30px !important;
+            height: 30px !important;
+            border-radius: 11px !important;
+            background: #0A1626 !important;
+            border-color: rgba(216,230,255,.12) !important;
+        }
+        .sd-native-trend-card [data-baseweb="select"] div,
+        .sd-native-trend-card [data-baseweb="select"] span {
+            color: #F7FAFF !important;
+            font-size: .68rem !important;
+            font-weight: 760 !important;
+        }
+        .sd-native-trend-card .sd-card-legend {
+            display:flex !important;
+            flex-wrap:wrap;
+            gap:9px 14px;
+            align-items:center;
+            margin:8px 0 5px 0;
+            font-size:.72rem;
+            color:#EAF2FF;
+            line-height:1.15;
+        }
+        .sd-native-trend-card .sd-card-legend-item {
+            display:inline-flex !important;
+            align-items:center;
+            gap:7px;
+            white-space:nowrap;
+            font-weight:720;
+        }
+        .sd-native-trend-card .sd-card-dot {
+            width:9px;
+            height:9px;
+            min-width:9px;
+            border-radius:50%;
+            display:inline-block;
+            box-shadow:0 0 0 2px rgba(255,255,255,0.035);
+        }
+
         .sd-compact-card {
             border: 1px solid rgba(216,230,255,0.095);
             border-radius: 18px;
@@ -897,11 +952,7 @@ def render_overview(data: dict) -> None:
             chart_variants = {}
             for metric_label, (metric_col, _unit) in TREND_METRICS.items():
                 chart_variants[(metric_label, "Mensile")] = _period_bar_chart(monthly_sport_df, metric_col, "Mensile")
-                chart_variants[(metric_label, "Settimanale")] = (
-                    chart_variants[(metric_label, "Mensile")]
-                    if weekly_sport_df.empty
-                    else _period_bar_chart(weekly_sport_df, metric_col, "Settimanale")
-                )
+                chart_variants[(metric_label, "Settimanale")] = _period_bar_chart(weekly_sport_df, metric_col, "Settimanale")
             _render_monthly_card(chart_variants, legend_html, height=PANEL_HEIGHT)
 
     with middle:
