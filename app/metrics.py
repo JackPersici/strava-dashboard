@@ -75,6 +75,17 @@ def normalize_activities(raw: list[dict]) -> pd.DataFrame:
     df["kilojoules"] = _numeric_col(df, "kilojoules")
     df["suffer_score"] = _numeric_col(df, "suffer_score")
 
+    for zone_idx in range(1, 6):
+        df[f"hr_zone_{zone_idx}_s"] = _numeric_col(df, f"hr_zone_{zone_idx}_s")
+    df["hr_zone_total_s"] = _numeric_col(df, "hr_zone_total_s")
+
+    if "has_hr_stream" not in df.columns:
+        df["has_hr_stream"] = df["hr_zone_total_s"] > 0
+    else:
+        df["has_hr_stream"] = df["has_hr_stream"].fillna(False).astype(bool)
+
+    df["hr_stream_samples"] = _numeric_col(df, "hr_stream_samples")
+
     if "id" not in df.columns:
         df["id"] = range(1, len(df) + 1)
 
@@ -535,8 +546,57 @@ def personal_records(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def zone_proxy(df: pd.DataFrame) -> pd.DataFrame:
+    """Return HR zone distribution.
+
+    Prefer real HR stream data when available. The real zone fields are created
+    during Strava sync by app.strava_api.StravaClient using HR max = 198 bpm:
+    Z1 <60%, Z2 60-70%, Z3 70-80%, Z4 80-90%, Z5 >=90%.
+
+    If the cached activities do not yet include HR stream zones, the function
+    falls back to the old effort_score proxy so the dashboard never breaks.
+    """
     if df.empty:
         return pd.DataFrame()
+
+    zone_order = [
+        "Zona 1 (Recupero)",
+        "Zona 2 (Endurance)",
+        "Zona 3 (Tempo)",
+        "Zona 4 (Soglia)",
+        "Zona 5 (VO2 Max)",
+    ]
+    zone_cols = [f"hr_zone_{idx}_s" for idx in range(1, 6)]
+
+    if all(col in df.columns for col in zone_cols):
+        temp = df.copy()
+        for col in zone_cols:
+            temp[col] = pd.to_numeric(temp[col], errors="coerce").fillna(0.0)
+        temp["hr_zone_total_s"] = temp[zone_cols].sum(axis=1)
+        hr_temp = temp[temp["hr_zone_total_s"] > 0].copy()
+
+        if not hr_temp.empty:
+            total_seconds = float(hr_temp[zone_cols].sum().sum())
+            total_activities = int(hr_temp["id"].nunique()) if "id" in hr_temp.columns else int(len(hr_temp))
+            rows: list[dict] = []
+            for idx, zone_name_value in enumerate(zone_order, start=1):
+                col = f"hr_zone_{idx}_s"
+                seconds = float(hr_temp[col].sum())
+                activity_count = int((hr_temp[col] > 0).sum())
+                rows.append(
+                    {
+                        "zone": zone_name_value,
+                        "activities": activity_count,
+                        "moving_time_h": seconds / 3600.0,
+                        "activities_pct": (activity_count / total_activities * 100.0) if total_activities > 0 else 0.0,
+                        "time_pct": (seconds / total_seconds * 100.0) if total_seconds > 0 else 0.0,
+                        "source": "hr_stream",
+                    }
+                )
+            out = pd.DataFrame(rows)
+            out["zone"] = pd.Categorical(out["zone"], categories=zone_order, ordered=True)
+            return out.sort_values("zone").reset_index(drop=True)
+
+    # Fallback for old cache files that do not have stream-based HR zones yet.
     temp = df.copy()
 
     def zone_name(v: float) -> str:
@@ -556,15 +616,14 @@ def zone_proxy(df: pd.DataFrame) -> pd.DataFrame:
         .agg(activities=("id", "count"), moving_time_h=("moving_time_h", "sum"))
         .reset_index()
     )
-    order = ["Zona 1 (Recupero)", "Zona 2 (Endurance)", "Zona 3 (Tempo)", "Zona 4 (Soglia)", "Zona 5 (VO2 Max)"]
-    out["zone"] = pd.Categorical(out["zone"], categories=order, ordered=True)
+    out["zone"] = pd.Categorical(out["zone"], categories=zone_order, ordered=True)
     out = out.sort_values("zone").reset_index(drop=True)
     total_activities = out["activities"].sum()
     total_time = out["moving_time_h"].sum()
     out["activities_pct"] = np.where(total_activities > 0, (out["activities"] / total_activities) * 100.0, 0.0)
     out["time_pct"] = np.where(total_time > 0, (out["moving_time_h"] / total_time) * 100.0, 0.0)
+    out["source"] = "proxy"
     return out
-
 
 def monthly_best_worst(df: pd.DataFrame, metric: str = "distance_km") -> dict:
     if df.empty:
